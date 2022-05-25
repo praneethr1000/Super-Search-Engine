@@ -9,14 +9,14 @@ class TermDocumentIndex(Index):
     """Implements an Index using a term-document matrix. Requires knowing the full corpus
     vocabulary and number of documents prior to construction."""
 
-    def __init__(self, vocab : Iterable[str], corpus_size : int):
+    def __init__(self, vocab: Iterable[str], corpus_size: int):
         """Constructs an empty index using the given vocabulary and corpus size."""
         self.vocabulary = list(vocab)
         self.vocabulary.sort()
         self.corpus_size = corpus_size
         self._matrix = [[False] * corpus_size for _ in range(len(vocab))]
 
-    def add_term(self, term : str, doc_id : int):
+    def add_term(self, term: str, doc_id: int):
         """Records that the given term occurred in the given document ID."""
         # bisect_left does a binary search to find where the given item would be in the list, if it is there.
         vocab_index = bisect_left(self.vocabulary, term)
@@ -26,12 +26,20 @@ class TermDocumentIndex(Index):
         else:
             raise InvalidOperation("Cannot add a term that is not already in the matrix")
 
-    def get_postings(self, term : str) -> Iterable[Posting]:
+    def get_postings(self, term: str) -> Iterable[Posting]:
         """Returns a list of Postings for all documents that contain the given term."""
         # TODO: implement this method.
-		# Binary search the self.vocabulary list for the given term. (see bisect_left, above)
-		# Walk down the self._matrix row for the term and collect the document IDs (column indices)
-		# of the "true" entries.
-    
+        postings = []
+        vocab_index = bisect_left(self.vocabulary, term)
+        if vocab_index != len(self.vocabulary) and self.vocabulary[vocab_index] == term:
+            for col, row in enumerate(self._matrix[vocab_index]):
+                if row:
+                    postings.append(Posting(col))
+        return postings
+
+    # Binary search the self.vocabulary list for the given term. (see bisect_left, above)
+    # Walk down the self._matrix row for the term and collect the document IDs (column indices)
+    # of the "true" entries.
+
     def vocabulary(self) -> Iterable[str]:
         return self.vocabulary

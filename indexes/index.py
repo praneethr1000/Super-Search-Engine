@@ -11,6 +11,6 @@ class Index(ABC):
         """Retrieves a sequence of Postings of documents that contain the given term."""
         pass
 
-    def vocabulary() -> list[str]:
+    def vocabulary(self) -> list[str]:
         """A (sorted) list of all terms in the index vocabulary."""
         pass
