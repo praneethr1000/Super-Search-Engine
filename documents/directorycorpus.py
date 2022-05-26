@@ -7,10 +7,12 @@ from documents.document import Document
 from . import textfiledocument
 from pathlib import Path
 
+
 class DirectoryCorpus:
     """A DirectoryCorpus represents a corpus found in a single directory on a local file system."""
-    
-    def __init__(self, abs_path : Path, file_filter : Callable[[Path], bool] = lambda p: True, factories : dict[str, Callable[[str], Document]] = {}):
+
+    def __init__(self, abs_path: Path, file_filter: Callable[[Path], bool] = lambda p: True,
+                 factories: dict[str, Callable[[str], Document]] = {}):
         """
         Constructs a corpus over an absolute directory path.
 
@@ -53,7 +55,7 @@ class DirectoryCorpus:
 
     @staticmethod
     def load_text_directory(path, extension) -> 'DirectoryCorpus':
-        c = DirectoryCorpus(path, 
-                lambda f: f.suffix == extension, 
-                factories={extension: textfiledocument.TextFileDocument.load_from})
+        c = DirectoryCorpus(path,
+                            lambda f: f.suffix == extension,
+                            factories={extension: textfiledocument.TextFileDocument.load_from})
         return c
