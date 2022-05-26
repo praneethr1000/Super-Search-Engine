@@ -44,22 +44,6 @@ def index_corpus(corpus: DirectoryCorpus) -> Index:
 
 if __name__ == "__main__":
     corpus_path = Path()
-    d = DirectoryCorpus.load_text_directory(corpus_path, ".txt")
+    d = DirectoryCorpus.load_json_directory(corpus_path, ".json")
 
-    # Build the index over this directory.
-    index = index_corpus(d)
 
-    # We aren't ready to use a full query parser;
-    # for now, we'll only support single-term queries.
-    while True:
-        query = input("\nEnter a term to search or Enter quit to stop: ")  # hard-coded search for "whale"
-        if query.lower() == "quit":
-            break
-        found_documents = index.get_postings(query)
-        if not found_documents:
-            print("None of the document contains the term searched for!")
-            continue
-        for p in index.get_postings(query):
-            print(f"Document ID {p.doc_id}")
-
-    # TODO: fix this application so the user is asked for a term to search.
