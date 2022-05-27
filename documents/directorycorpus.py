@@ -4,9 +4,9 @@ from pyclbr import Function
 from typing import Callable, Iterable, Iterator
 
 from documents.document import Document
-from . import textfiledocument
+from . import textfiledocument, jsonfiledocument
 from pathlib import Path
-
+import json
 
 class DirectoryCorpus:
     """A DirectoryCorpus represents a corpus found in a single directory on a local file system."""
@@ -58,4 +58,12 @@ class DirectoryCorpus:
         c = DirectoryCorpus(path,
                             lambda f: f.suffix == extension,
                             factories={extension: textfiledocument.TextFileDocument.load_from})
+        return c
+
+    @staticmethod
+    def load_json_directory(path, extension) -> 'DirectoryCorpus':
+        c = DirectoryCorpus(path,
+                            lambda f: f.suffix == extension,
+                            factories={extension: jsonfiledocument.JsonFileDocument.load_from})
+        print(c._read_documents())
         return c

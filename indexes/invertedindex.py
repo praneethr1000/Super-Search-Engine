@@ -10,7 +10,7 @@ class InvertedIndex(Index):
     def __init__(self):
         """Constructs an empty index using the given vocabulary."""
         self.document_mapping = {}
-        self.vocabulary = set()
+        #self.vocabulary = set()
 
     def add_term(self, term: str, doc_id: int):
         """Records that the given term occurred in the given document ID."""
@@ -30,7 +30,8 @@ class InvertedIndex(Index):
         return postings
 
     def get_vocabulary(self) -> Iterable[str]:
-        return list(self.vocabulary)
+
+        return list(vocabulary)
 
     def sort_vocabulary(self):
         self.vocabulary = set(list(sorted(self.vocabulary)))
