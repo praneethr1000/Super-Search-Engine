@@ -15,16 +15,14 @@ def index_corpus(corpus: DirectoryCorpus) -> Index:
         document_content = EnglishTokenStream(d.get_content())
         for document in document_content:
             token = token_processor.process_token(document)
-            inverted_document_index.vocabulary.add(token)
             inverted_document_index.add_term(token, doc_id)
 
-    # Now we have all the vocab, so sorting them.
-    inverted_document_index.sort_vocabulary()
     return inverted_document_index
 
 
 if __name__ == "__main__":
     corpus_path = Path()
+    corpus_path = corpus_path / 'MobyDicks Text Documents'
     d = DirectoryCorpus.load_text_directory(corpus_path, ".txt")
 
     # Build the index over this directory.
