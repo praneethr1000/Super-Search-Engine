@@ -44,6 +44,7 @@ def index_corpus(corpus: DirectoryCorpus) -> Index:
 
 if __name__ == "__main__":
     corpus_path = Path()
-    d = DirectoryCorpus.load_json_directory(corpus_path, ".json")
+    c = DirectoryCorpus.load_json_directory(corpus_path, ".json")
+
 
 
