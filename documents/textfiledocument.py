@@ -16,9 +16,11 @@ class TextFileDocument(Document):
     def title(self) -> str:
         return self.path.stem
 
-    # returns TextIOWrapper
+    # returns Text
     def get_content(self) -> Iterable[str]:
-        return open(self.path)
+        with open(self.path, encoding='utf-8') as f:
+            data = f.read()
+        return data
 
     @staticmethod
     def load_from(abs_path: Path, doc_id: int) -> 'TextFileDocument':

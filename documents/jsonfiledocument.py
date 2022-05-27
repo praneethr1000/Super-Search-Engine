@@ -1,3 +1,4 @@
+from io import TextIOWrapper
 from pathlib import Path
 from typing import Iterable
 from .document import Document
@@ -17,19 +18,13 @@ class JsonFileDocument(Document):
     def title(self) -> str:
         return self.path.stem
 
-    # returns TextIOWrapper
+    # returnsJsonIOWrapper
     def get_content(self) -> Iterable[str]:
-        dict_value = self.path
-        print(dict_value)
-        res = json.dumps(dict_value)
-        d2 = json.loads(res)
-        print(d2)
-        return d2
+        with open(self.path, encoding='utf-8') as f:
+            data = json.load(f)
+        return data['body']
 
     @staticmethod
     def load_from(abs_path: Path, doc_id: int) -> 'JsonFileDocument':
         """A factory method to create a JsonFileDocument around the given file path."""
-        with open(abs_path) as f:
-            data = json.load(f)
-            print(data['body'])
         return JsonFileDocument(doc_id, abs_path)

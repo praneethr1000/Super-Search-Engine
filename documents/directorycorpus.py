@@ -65,5 +65,4 @@ class DirectoryCorpus:
         c = DirectoryCorpus(path,
                             lambda f: f.suffix == extension,
                             factories={extension: jsonfiledocument.JsonFileDocument.load_from})
-        print(c._read_documents())
         return c
