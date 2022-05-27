@@ -1,11 +1,19 @@
 from .tokenprocessor import TokenProcessor
 import re
+from nltk.stem import PorterStemmer
 
 
 class AdvancedTokenProcessor(TokenProcessor):
-    """A BasicTokenProcessor creates terms from tokens by removing all non-alphanumeric characters
-    from the token, and converting it to all lowercase."""
-    whitespace_re = re.compile(r"\W+")
+    """A AdvancedTokenProcessor creates terms from tokens by removing all non-alphanumeric characters
+    from the beginning and end of the token, and converting it to all lowercase."""
 
-    def process_token(self, token: str) -> str:
-        return re.sub(self.whitespace_re, "", token).lower()
+    def process_token(self, token: str) -> list[str]:
+        tokens = re.sub(r"^\W+|\W+$", "", token).lower().replace('"', '').replace("'", '').split("-")
+        if len(tokens) > 1:
+            tokens.append(''.join(tokens))
+
+        ps = PorterStemmer()
+
+        for index, w in enumerate(tokens):
+            tokens[index] = ps.stem(w)
+        return tokens

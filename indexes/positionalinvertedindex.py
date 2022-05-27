@@ -28,9 +28,9 @@ class PositionalInvertedIndex(Index):
         """Returns a list of Postings for all documents that contain the given term."""
         # TODO: implement this method.
         postings = []
-        # if term in self.document_mapping:
-        #     for doc in self.document_mapping[term]:
-        #         postings.append(Posting(doc))
+        if term in self.document_mapping:
+            for doc in self.document_mapping[term][0]:
+                postings.append(Posting(doc))
         return postings
 
     def get_vocabulary(self) -> Iterable[str]:
