@@ -33,7 +33,7 @@ class PositionalInvertedIndex(Index):
                 postings.append(Posting(doc))
         return postings
 
-    def get_vocabulary(self) -> Iterable[str]:
-        # vocabulary = list(sorted(self.document_mapping.keys()))
-        # return vocabulary
-        return self.document_mapping
+    def get_vocabulary(self) -> list[str]:
+        vocabulary = list(sorted(self.document_mapping.keys()))
+        return vocabulary
+
