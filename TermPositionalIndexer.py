@@ -2,6 +2,7 @@ from pathlib import Path
 from documents import DirectoryCorpus
 from indexes import Index, PositionalInvertedIndex
 from text import AdvancedTokenProcessor, EnglishTokenStream
+import time
 
 """This basic program builds a term-document matrix over the .txt files in 
 the same directory as this file."""
@@ -35,12 +36,15 @@ def query_check(first_word: str) -> str:
 
 def start_program(directory, action):
     corpus_path = Path()
+    starttime = time.time()
     if directory == '1':
         corpus_path = corpus_path / 'Json Documents'
         corpus = DirectoryCorpus.load_json_directory(corpus_path, ".json")
     else:
         corpus_path = corpus_path / 'MobyDicks Text Documents'
         corpus = DirectoryCorpus.load_text_directory(corpus_path, ".txt")
+    endtime = time.time()
+    print('Time taken to load documents is: ', endtime - starttime)
 
     # Build the index over this directory.
     index = index_corpus(corpus)
