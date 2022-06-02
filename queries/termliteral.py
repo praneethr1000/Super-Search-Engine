@@ -15,3 +15,6 @@ class TermLiteral(QueryComponent):
 
     def __str__(self) -> str:
         return self.term
+
+    def __repr__(self):
+        return str(self)

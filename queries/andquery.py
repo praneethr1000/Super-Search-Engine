@@ -10,10 +10,12 @@ class AndQuery(QueryComponent):
         # TODO: program the merge for an AndQuery, by gathering the postings of the composed QueryComponents and
         #  intersecting the resulting postings.
         documents = []
-        for term in self.components:
+        for component in self.components:
             documents.append([])
-            for p in index.get_postings(str(term)):
+            s = component.get_postings(index)
+            for p in s:
                 documents[-1].append(p.doc_id)
+
         curr = 1
         while curr < len(documents):
             first = documents[curr-1]
@@ -31,7 +33,10 @@ class AndQuery(QueryComponent):
                     j += 1
             documents[curr] = out
             curr += 1
-        return documents[-1]
+        postings = []
+        for doc in documents[-1]:
+            postings.append(Posting(doc))
+        return postings
 
     def __str__(self):
         return " AND ".join(map(str, self.components))

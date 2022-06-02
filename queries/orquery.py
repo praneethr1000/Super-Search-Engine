@@ -1,18 +1,19 @@
 from .querycomponent import QueryComponent
 from indexes import Index, Posting
 
-from queries import querycomponent 
+from queries import querycomponent
+
 
 class OrQuery(QueryComponent):
-    def __init__(self, components : list[QueryComponent]):
+    def __init__(self, components: list[QueryComponent]):
         self.components = components
 
-    def get_postings(self, index : Index) -> list[Posting]:
-        # TODO: program the merge for an OrQuery, by gathering the postings of the composed QueryComponents and
+    def get_postings(self, index: Index) -> list[Posting]:
         documents = []
-        for term in self.components:
+        for component in self.components:
             documents.append([])
-            for p in index.get_postings(str(term)):
+            s = component.get_postings(index)
+            for p in s:
                 documents[-1].append(p.doc_id)
         curr = 1
         while curr < len(documents):
@@ -29,11 +30,18 @@ class OrQuery(QueryComponent):
                     out.append(first[i])
                     i += 1
                 else:
-                    out.append(first[j])
+                    out.append(second[j])
                     j += 1
+            if i < len(first):
+                out.extend(first[i:])
+            if j < len(second):
+                out.extend(second[j])
             documents[curr] = out
             curr += 1
-        return documents[-1]
+        postings = []
+        for doc in documents[-1]:
+            postings.append(Posting(doc))
+        return postings
 
     def __str__(self):
         return "(" + " OR ".join(map(str, self.components)) + ")"

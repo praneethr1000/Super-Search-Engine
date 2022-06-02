@@ -10,31 +10,33 @@ class PhraseLiteral(QueryComponent):
     def __init__(self, terms: list[str]):
         self.terms = [s for s in terms]
 
-    def get_postings(self, index) -> list[Posting]:
-        result = []
-        for term in self.terms:
-            result.append(index.get_postings(str(term)))
-        len_components = len(self.terms)
-        first, second = result[0], result[1]
+    def positional_merge(self, result):
+        len_components = len(result)
+        temp = result[0]
         curr = 1
-        temp = []
         while curr < len_components:
             i, j = 0, 0
+            first = temp
+            second = result[curr]
+            temp = []
             while i < len(first[0]) and j < len(second[0]):
                 if first[0][i] == second[0][j]:
                     pos1, pos2 = 0, 0
-                    while pos1 < len(first[1]) and pos2 < len(first[1]):
-                        if first[1][i][pos1] == first[1][j][pos2] + 1:
-                            if temp:
-                                temp[-1][1].append(pos2)
+                    while pos1 < len(first[1][i]) and pos2 < len(second[1][j]):
+                        if first[1][i][pos1] == second[1][j][pos2] - 1:
+                            if temp and temp[-1][-1] != first[1][i]:
+                                temp[0].append(first[0][i])
+                                temp[1].append([second[1][j][pos2]])
+                            elif temp and temp[-1][-1] == first[1][i]:
+                                temp[1][-1].append(second[1][j][pos2])
                             else:
-                                temp.append([[first[0][i]], [pos2]])
+                                temp = [[first[0][i]], [[second[1][j][pos2]]]]
                             pos1 += 1
                             pos2 += 1
-                        elif first[1][i][pos1] == first[1][j][pos2]:
+                        elif first[1][i][pos1] == second[1][j][pos2]:
                             pos1 += 1
                             pos2 += 1
-                        elif first[1][i][pos1] > first[1][j][pos2]:
+                        elif first[1][i][pos1] > second[1][j][pos2]:
                             pos2 += 1
                         else:
                             pos1 += 1
@@ -45,17 +47,18 @@ class PhraseLiteral(QueryComponent):
                 else:
                     j += 1
             curr += 1
-            first = temp
-            second = result[curr]
+        return temp
+
+    def get_postings(self, index) -> list[Posting]:
+        result = []
+        for term in self.terms:
+            result.append(index.get_termInfo(term))
+        documents = self.positional_merge(result)
 
         postings = []
-        for doc in temp[0]:
+        for doc in documents[0]:
             postings.append(Posting(doc))
         return postings
-
-        # TODO: program this method. Retrieve the postings for the individual terms in the phrase,
-
-    # and positional merge them together.
 
     def __str__(self) -> str:
         return '"' + " ".join(self.terms) + '"'

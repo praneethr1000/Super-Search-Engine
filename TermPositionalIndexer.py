@@ -1,6 +1,7 @@
 from pathlib import Path
 from documents import DirectoryCorpus
 from indexes import Index, PositionalInvertedIndex
+from queries import BooleanQueryParser
 from text import AdvancedTokenProcessor, EnglishTokenStream
 import time
 
@@ -12,23 +13,23 @@ def index_corpus(corpus: DirectoryCorpus) -> PositionalInvertedIndex:
     token_processor = AdvancedTokenProcessor()
     positional_inverted_document_index = PositionalInvertedIndex()
 
-    for doc_id, d in enumerate(corpus):
+    for d in corpus:
         document_content = EnglishTokenStream(d.get_content())
         for position, document in enumerate(document_content):
             tokens = token_processor.process_token(document)
             for token in tokens:
-                positional_inverted_document_index.add_term(token, doc_id + 1, position + 1)
+                positional_inverted_document_index.add_term(token, d.id, position + 1)
     return positional_inverted_document_index
 
 
 def query_check(first_word: str) -> str:
-    if first_word[0] == 'q':
+    if first_word == ':q':
         return "quit"
-    elif first_word == 'stem':
+    elif first_word == ':stem':
         return "stem"
-    elif first_word == 'index':
-        return "directory"
-    elif first_word == 'vocab':
+    elif first_word == ':index':
+        return "index"
+    elif first_word == ':vocab':
         return "vocab"
     else:
         return "not special"
@@ -43,20 +44,20 @@ def start_program(directory, action):
     else:
         corpus_path = corpus_path / 'MobyDicks Text Documents'
         corpus = DirectoryCorpus.load_text_directory(corpus_path, ".txt")
-    endtime = time.time()
-    print('Time taken to load documents is: ', endtime - starttime)
 
     # Build the index over this directory.
     index = index_corpus(corpus)
     if action == "vocab":
         vocabulary = index.get_vocabulary()
         for vocab in range(1000):
-            print(vocab)
+            print(vocabulary[vocab])
         print("Total number of vocabulary terms: ", len(vocabulary))
-    process_queries(index, directory, corpus)
+    process_queries(index, directory, corpus, starttime)
 
 
-def process_queries(index, directory, corpus):
+def process_queries(index, directory, corpus, starttime):
+    endtime = time.time()
+    print('Time taken to load documents is: ', endtime - starttime)
     while True:
         query = input("\nEnter a term to search: ")
         words = query.split()
@@ -64,26 +65,33 @@ def process_queries(index, directory, corpus):
         action_to_perform = query_check(first_word)
         if action_to_perform == "quit":
             print("Thank you!")
+            break
         elif action_to_perform == "stem":
             token_processor = AdvancedTokenProcessor()
             print(*token_processor.stem_tokens([words[1]]))
         elif action_to_perform == "index":
-            main()
+            print(words[1])
+            if words[1].lower() == 'json':
+                start_program('1', "start")
+            else:
+                start_program('2', "start")
         elif action_to_perform == "vocab":
             start_program(directory, action_to_perform)
         else:
-            term = words[0]
-            found_documents = index.get_postings(term)
+            parser = BooleanQueryParser()
+            q = parser.parse_query(query)
+            found_documents = q.get_postings(index)
             if not found_documents:
+                print(q)
                 print("None of the document contains the term searched for!")
             else:
-                for p in index.get_postings(term):
-                    print(f"Document ID {p.doc_id}")
+                for doc in found_documents:
+                    print(f"Document ID {doc.doc_id}")
                 print("Number of documents with the term: ", len(found_documents))
                 see_document_content = input("Do you want to view a document? Type Yes or No: ")
                 if see_document_content.lower() == 'yes':
                     document_id = input("Enter the document id that you want to view: ")
-                    corpus.get_document(document_id)
+                    print("Content", corpus.get_document(int(document_id)).get_content())
 
 
 def main():

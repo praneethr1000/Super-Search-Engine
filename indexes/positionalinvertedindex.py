@@ -1,6 +1,7 @@
 from typing import Iterable
 from . import Posting, Index
 from bisect import bisect_left
+from queries import BooleanQueryParser
 
 
 class PositionalInvertedIndex(Index):
@@ -29,11 +30,15 @@ class PositionalInvertedIndex(Index):
         # TODO: implement this method.
         postings = []
         if term in self.document_mapping:
+            index = 0
             for doc in self.document_mapping[term][0]:
                 postings.append(Posting(doc))
+                index += 1
         return postings
+
+    def get_termInfo(self, term):
+        return self.document_mapping[term]
 
     def get_vocabulary(self) -> list[str]:
         vocabulary = list(sorted(self.document_mapping.keys()))
         return vocabulary
-

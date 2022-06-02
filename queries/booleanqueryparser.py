@@ -31,6 +31,7 @@ class BooleanQueryParser:
 
         # Find the end of the next subquery.
         next_plus = query.find("+", start_index + 1)
+
         if next_plus < 0:
             # If there is no other + sign, then this is the final subquery in the
             # query string.
@@ -55,24 +56,34 @@ class BooleanQueryParser:
         """
         Locates and returns the next literal from the given subquery string.
         """
+        sub_length = len(subquery)
+        length_out = 0
+
         # Skip past white space.
         while subquery[start_index] == ' ':
             start_index += 1
-        subquery = subquery[:start_index]
 
-        terms = [t.strip('"') for t in re.findall(r'[^\s"]+|"[^"]*"', subquery)]
-        if len(terms) == 1:
-            # This is a term literal containing a single term.
+        if subquery[start_index] == '"':
+            next_quote = subquery.find('"', start_index+1)
+            length_out = next_quote - start_index
             return BooleanQueryParser._Literal(
-                BooleanQueryParser._StringBounds(start_index, len(terms[0])),
-                TermLiteral(subquery[start_index:start_index + len(terms[0])])
+                BooleanQueryParser._StringBounds(start_index, length_out+1),
+                PhraseLiteral(subquery[start_index+1:start_index + length_out].split())
             )
+
+        # Locate the next space to find the end of this literal.
+        next_space = subquery.find(' ', start_index)
+        if next_space < 0:
+            # No more literals in this subquery.
+            length_out = sub_length - start_index
         else:
-            return BooleanQueryParser._Literal(
-                BooleanQueryParser._StringBounds(start_index, len(terms[0])),
-                PhraseLiteral(terms)
-            )
-        # TODO:
+            length_out = next_space - start_index
+
+        # This is a term literal containing a single term.
+        return BooleanQueryParser._Literal(
+            BooleanQueryParser._StringBounds(start_index, length_out),
+            TermLiteral(subquery[start_index:start_index + length_out])
+        )
 
     # Instead of assuming that we only have single-term literals, modify this method so it will create a PhraseLiteral
     # object if the first non-space character you find is a double-quote ("). In this case, the literal is not ended
@@ -104,7 +115,6 @@ class BooleanQueryParser:
             while sub_start < len(subquery):
                 # Extract the next literal from the subquery.
                 lit = BooleanQueryParser._find_next_literal(subquery, sub_start)
-
                 # Add the literal component to the conjunctive list.
                 subquery_literals.append(lit.literal_component)
 
@@ -118,6 +128,7 @@ class BooleanQueryParser:
 
             # If there was only one literal in the subquery, we don't need to AND it with anything --
             # its component can go straight into the list.
+
             if len(subquery_literals) == 1:
                 all_subqueries.append(subquery_literals[0])
             else:
