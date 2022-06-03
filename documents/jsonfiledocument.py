@@ -16,7 +16,9 @@ class JsonFileDocument(Document):
 
     @property
     def title(self) -> str:
-        return self.path.stem
+        with open(self.path, encoding='utf-8') as f:
+            data = json.load(f)
+        return data['title']
 
     # returnsJsonIOWrapper
     def get_content(self) -> Iterable[str]:

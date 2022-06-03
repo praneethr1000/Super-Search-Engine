@@ -5,9 +5,6 @@ from queries import BooleanQueryParser
 from text import AdvancedTokenProcessor, EnglishTokenStream
 import time
 
-"""This basic program builds a term-document matrix over the .txt files in 
-the same directory as this file."""
-
 
 def index_corpus(corpus: DirectoryCorpus) -> PositionalInvertedIndex:
     token_processor = AdvancedTokenProcessor()
@@ -86,12 +83,12 @@ def process_queries(index, directory, corpus, starttime):
                 print("None of the document contains the term searched for!")
             else:
                 for doc in found_documents:
-                    print(f"Document ID {doc.doc_id}")
-                print("Number of documents with the term: ", len(found_documents))
-                see_document_content = input("Do you want to view a document? Type Yes or No: ")
+                    print(f"{str(doc.doc_id) + '.' +corpus.get_document(int(doc.doc_id)).title}")
+                print("\nNumber of documents with the term: ", len(found_documents))
+                see_document_content = input("\nDo you want to view a document? Type Yes or No: ")
                 if see_document_content.lower() == 'yes':
-                    document_id = input("Enter the document id that you want to view: ")
-                    print("Content", corpus.get_document(int(document_id)).get_content())
+                    document_id = input("\nEnter the document id that you want to view: ")
+                    print(corpus.get_document(int(document_id)).get_content())
 
 
 def main():

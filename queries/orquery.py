@@ -33,7 +33,7 @@ class OrQuery(QueryComponent):
             if i < len(first):
                 out.extend(first[i:])
             if j < len(second):
-                out.extend(second[j])
+                out.extend(second[j:])
             documents[curr] = out
             curr += 1
         postings = []
