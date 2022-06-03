@@ -1,7 +1,6 @@
 from typing import Iterable
 from . import Posting, Index
 from bisect import bisect_left
-from queries import BooleanQueryParser
 
 
 class PositionalInvertedIndex(Index):

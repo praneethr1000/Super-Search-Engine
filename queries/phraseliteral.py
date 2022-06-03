@@ -49,9 +49,10 @@ class PhraseLiteral(QueryComponent):
             curr += 1
         return temp
 
-    def get_postings(self, index) -> list[Posting]:
+    def get_postings(self, index, token_processor) -> list[Posting]:
         result = []
         for term in self.terms:
+            term = ''.join(token_processor.process_token(term))
             result.append(index.get_termInfo(term))
         documents = self.positional_merge(result)
 

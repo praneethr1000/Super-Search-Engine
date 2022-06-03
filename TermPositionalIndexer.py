@@ -79,10 +79,10 @@ def process_queries(index, directory, corpus, starttime):
             start_program(directory, action_to_perform)
         else:
             parser = BooleanQueryParser()
+            token_processor = AdvancedTokenProcessor()
             q = parser.parse_query(query)
-            found_documents = q.get_postings(index)
+            found_documents = q.get_postings(index, token_processor)
             if not found_documents:
-                print(q)
                 print("None of the document contains the term searched for!")
             else:
                 for doc in found_documents:

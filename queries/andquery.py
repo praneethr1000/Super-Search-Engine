@@ -6,13 +6,11 @@ class AndQuery(QueryComponent):
     def __init__(self, components: list[QueryComponent]):
         self.components = components
 
-    def get_postings(self, index: Index) -> list[Posting]:
-        # TODO: program the merge for an AndQuery, by gathering the postings of the composed QueryComponents and
-        #  intersecting the resulting postings.
+    def get_postings(self, index: Index, token_processor) -> list[Posting]:
         documents = []
         for component in self.components:
             documents.append([])
-            s = component.get_postings(index)
+            s = component.get_postings(index, token_processor)
             for p in s:
                 documents[-1].append(p.doc_id)
 

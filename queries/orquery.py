@@ -1,18 +1,16 @@
 from .querycomponent import QueryComponent
 from indexes import Index, Posting
 
-from queries import querycomponent
-
 
 class OrQuery(QueryComponent):
     def __init__(self, components: list[QueryComponent]):
         self.components = components
 
-    def get_postings(self, index: Index) -> list[Posting]:
+    def get_postings(self, index: Index, token_processor) -> list[Posting]:
         documents = []
         for component in self.components:
             documents.append([])
-            s = component.get_postings(index)
+            s = component.get_postings(index, token_processor)
             for p in s:
                 documents[-1].append(p.doc_id)
         curr = 1
