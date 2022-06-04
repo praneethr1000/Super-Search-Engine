@@ -64,11 +64,12 @@ class BooleanQueryParser:
             start_index += 1
 
         if subquery[start_index] == '"':
-            next_quote = subquery.find('"', start_index+1)
+            start_index += 1
+            next_quote = subquery.find('"', start_index)
             length_out = next_quote - start_index
             return BooleanQueryParser._Literal(
                 BooleanQueryParser._StringBounds(start_index, length_out+1),
-                PhraseLiteral(subquery[start_index+1:start_index + length_out].split())
+                PhraseLiteral(subquery[start_index:start_index + length_out].split())
             )
 
         # Locate the next space to find the end of this literal.

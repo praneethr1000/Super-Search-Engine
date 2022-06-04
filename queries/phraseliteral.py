@@ -55,9 +55,12 @@ class PhraseLiteral(QueryComponent):
             term = ''.join(token_processor.process_token(term))
             result.append(index.get_termInfo(term))
         documents = self.positional_merge(result)
-
-        postings = []
+        final_result = [-1]
         for doc in documents[0]:
+            if final_result[-1] != doc:
+                final_result.append(doc)
+        postings = []
+        for doc in final_result[1:]:
             postings.append(Posting(doc))
         return postings
 

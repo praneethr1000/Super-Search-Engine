@@ -71,6 +71,7 @@ def start_program(directory, action):
         if isbiword_indexing:
             index = index_corpus(corpus, "biword indexing")
         else:
+            print("Iam here")
             index = index_corpus(corpus, "soundex indexing")
     else:
         corpus_path = corpus_path / 'MobyDicks Text Documents'
