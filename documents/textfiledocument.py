@@ -16,6 +16,10 @@ class TextFileDocument(Document):
     def title(self) -> str:
         return self.path.stem
 
+    @property
+    def author(self) -> str:
+        return 'No info about author'
+
     # returns Text
     def get_content(self) -> Iterable[str]:
         with open(self.path, encoding='utf-8') as f:

@@ -11,9 +11,8 @@ class SoundexIndex(Index):
         self.document_mapping = {}
         self.code_mapping = {}
 
-    def add_term(self, term: str, doc_id: int, position: int):
+    def add_term(self, term: str, doc_id: int):
         """Records that the given term occurred in the given document ID."""
-
         if term not in self.document_mapping:
             len_term = len(term)
             if len_term == 1:
@@ -22,21 +21,21 @@ class SoundexIndex(Index):
             word = list(term)[1:]
             for index, letter in enumerate(word):
                 if letter in ['a', 'e', 'i', 'o', 'u', 'h', 'w', 'y']:
-                    word[letter] = '0'
+                    word[index] = '0'
                 elif letter in ['b', 'f', 'p', 'v']:
-                    word[letter] = '1'
+                    word[index] = '1'
                 elif letter in ['c', 'g', 'j', 'k', 'q', 's', 'x', 'z']:
-                    word[letter] = '2'
+                    word[index] = '2'
                 elif letter in ['d', 't']:
-                    word[letter] = '3'
+                    word[index] = '3'
                 elif letter == 'l':
-                    word[letter] = '4'
+                    word[index] = '4'
                 elif letter in ['m', 'n']:
-                    word[letter] = '5'
+                    word[index] = '5'
                 elif letter == 'r':
-                    word[letter] = '6'
+                    word[index] = '6'
                 else:
-                    print("Unknown character")
+                    word[index] = ''
             index = 0
             while index < (len_term - 2):
                 if word[index] == word[index + 1] and word[index] != '0':
