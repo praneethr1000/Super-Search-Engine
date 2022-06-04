@@ -2,7 +2,7 @@ from pathlib import Path
 from documents import DirectoryCorpus
 from indexes import PositionalInvertedIndex, SoundexIndex, BiwordIndex
 from queries import BooleanQueryParser
-from text import AdvancedTokenProcessor, EnglishTokenStream
+from text import AdvancedTokenProcessor, EnglishTokenStream, BasicTokenProcessor
 import time
 
 
@@ -17,21 +17,24 @@ def index_corpus(corpus: DirectoryCorpus, index: str):
 
     for d in corpus:
         document_content = EnglishTokenStream(d.get_content())
-        for position, document in enumerate(document_content):
-            tokens = token_processor.process_token(document)
-            for token in tokens:
-                if index == "positional inverted indexing":
-                    document_index.add_term(token, d.id, position + 1)
-                else:
-                    if token != '':
+        if index != "soundex indexing":
+            for position, document in enumerate(document_content):
+                tokens = token_processor.process_token(document)
+                for token in tokens:
+                    if index == "positional inverted indexing":
+                        document_index.add_term(token, d.id, position + 1)
+                    else:
                         document_index.add_term(token, d.id)
-        if index == "soundex indexing":
+        elif index == "soundex indexing":
+            for document in document_content:
+                tokens = token_processor.process_token(document)
+                for token in tokens:
+                    document_index.add_term(token, d.id, "body")
+            token_processor = BasicTokenProcessor()
             documents_author = EnglishTokenStream(d.author)
             for author in documents_author:
-                tokens = token_processor.process_token(author)
-                for token in tokens:
-                    if token != '':
-                        document_index.add_term(token, d.id)
+                token = token_processor.process_token(author)
+                document_index.add_term(token, d.id, "author")
     return document_index
 
 
@@ -71,7 +74,6 @@ def start_program(directory, action):
         if isbiword_indexing:
             index = index_corpus(corpus, "biword indexing")
         else:
-            print("Iam here")
             index = index_corpus(corpus, "soundex indexing")
     else:
         corpus_path = corpus_path / 'MobyDicks Text Documents'
@@ -117,10 +119,9 @@ def process_queries(index, directory, corpus, starttime, isbiword_indexing):
             parser = BooleanQueryParser()
             token_processor = AdvancedTokenProcessor()
             if action_to_perform == "author":
-                query = ''.join(token_processor.process_token(query.split()[1]))
-                print(index.document_mapping)
-                print(index.code_mapping)
-                found_documents = index.get_postings(query)
+                token_processor = BasicTokenProcessor()
+                query = token_processor.process_token(query.split()[1])
+                found_documents = index.get_postings(query + " author")
             elif isbiword_indexing:
                 query = token_processor.process_token(query)
                 found_documents = index.get_postings(query[0].split())
@@ -131,7 +132,7 @@ def process_queries(index, directory, corpus, starttime, isbiword_indexing):
                 print("None of the document contains the term searched for!")
             else:
                 for doc in found_documents:
-                    if action_to_perform == "author":
+                    if action_to_perform == "author" or corpus.get_document(int(doc.doc_id)).author != "No info about author":
                         print(f"{str(doc.doc_id) + '.' + corpus.get_document(int(doc.doc_id)).title + ' by ' + corpus.get_document(int(doc.doc_id)).author}")
                     else:
                         print(f"{str(doc.doc_id) + '.' +corpus.get_document(int(doc.doc_id)).title}")

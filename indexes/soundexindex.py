@@ -10,9 +10,14 @@ class SoundexIndex(Index):
         """Constructs an empty index using the given vocabulary."""
         self.document_mapping = {}
         self.code_mapping = {}
+        self.body_tag_terms = set()
 
-    def add_term(self, term: str, doc_id: int):
+    def add_term(self, term: str, doc_id: int, tag: str):
         """Records that the given term occurred in the given document ID."""
+        if tag == "body":
+            self.body_tag_terms.add(term)
+        if term == "":
+            return
         if term not in self.document_mapping:
             len_term = len(term)
             if len_term == 1:
@@ -64,9 +69,12 @@ class SoundexIndex(Index):
     def get_postings(self, term: str) -> Iterable[Posting]:
         """Returns a list of Postings for all documents that contain the given term."""
         # TODO: implement this method.
+        tags = term.split()
         postings = []
-        if term in self.document_mapping:
-            for doc in self.code_mapping[self.document_mapping[term]]:
+        if tags[-1] != 'author' and tags[0] not in self.body_tag_terms:
+            return postings
+        if tags[0] in self.document_mapping:
+            for doc in self.code_mapping[self.document_mapping[tags[0]]]:
                 postings.append(Posting(doc))
         return postings
 
