@@ -51,19 +51,29 @@ class PhraseLiteral(QueryComponent):
 
     def get_postings(self, index, token_processor) -> list[Posting]:
         result = []
-        for term in self.terms:
-            term = ''.join(token_processor.process_token(term))
-            result.append(index.get_termInfo(term))
-        print(result)
-        documents = self.positional_merge(result)
-        final_result = [-1]
-        for doc in documents[0]:
-            if final_result[-1] != doc:
-                final_result.append(doc)
-        postings = []
-        for doc in final_result[1:]:
-            postings.append(Posting(doc))
-        return postings
+        if len(self.terms) == 2:
+            postings = []
+            terms = self.terms
+            for i in range(len(terms)):
+                terms[i] = ''.join(token_processor.process_token(terms[i]))
+            query = ' '.join(terms)
+            document_mapping = index.get_biwordTermInfo(query)
+            for doc in document_mapping:
+                postings.append(Posting(doc))
+            return postings
+        else:
+            for term in self.terms:
+                term = ''.join(token_processor.process_token(term))
+                result.append(index.get_termInfo(term))
+            documents = self.positional_merge(result)
+            final_result = [-1]
+            for doc in documents[0]:
+                if final_result[-1] != doc:
+                    final_result.append(doc)
+            postings = []
+            for doc in final_result[1:]:
+                postings.append(Posting(doc))
+            return postings
 
     def __str__(self) -> str:
         return '"' + " ".join(self.terms) + '"'

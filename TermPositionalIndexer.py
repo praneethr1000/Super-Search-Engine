@@ -1,6 +1,6 @@
 from pathlib import Path
 from documents import DirectoryCorpus
-from indexes import PositionalInvertedIndex, SoundexIndex, BiwordIndex
+from indexes import PositionalInvertedIndex, SoundexIndex
 from queries import BooleanQueryParser
 from text import AdvancedTokenProcessor, EnglishTokenStream, BasicTokenProcessor
 import time
@@ -10,27 +10,27 @@ def index_corpus(corpus: DirectoryCorpus, index: str):
     token_processor = AdvancedTokenProcessor()
     if index == "positional inverted indexing":
         document_index = PositionalInvertedIndex()
-    elif index == "biword indexing":
-        document_index = BiwordIndex()
     else:
         document_index = SoundexIndex()
 
     for d in corpus:
         document_content = EnglishTokenStream(d.get_content())
         if index == "positional inverted indexing":
-            for position, document in enumerate(document_content):
-                tokens = token_processor.process_token(document)
-                for token in tokens:
-                    document_index.add_term(token, d.id, position + 1)
-        elif index == "biword indexing":
             terms = []
             for term in document_content:
-                terms.append(term)
+                terms.append(token_processor.process_token(term))
             len_document = len(terms)
             for i in range(len_document-1):
-                term1 = ''.join(token_processor.process_token(terms[i]))
-                term2 = ''.join(token_processor.process_token(terms[i+1]))
-                document_index.add_term(term1+" "+term2, d.id)
+                term1 = terms[i]
+                term2 = ''.join(terms[i+1])
+                document_index.add_term_biword(''.join(term1)+" "+term2, d.id)
+                for token in term1:
+                    document_index.add_term(token, d.id, i + 1)
+            if len_document >= 1:
+                final_term = terms[-1]
+                for token in final_term:
+                    document_index.add_term(token, d.id, len_document)
+
         else:
             for document in document_content:
                 tokens = token_processor.process_token(document)
@@ -62,32 +62,18 @@ def query_check(first_word: str) -> str:
 def start_program(directory, action):
     corpus_path = Path()
     starttime = time.time()
-    biwordIndex = input("\nType yes if you want to perform biword indexing on the selected directory: ")
-    if biwordIndex.lower() == "yes":
-        isbiword_indexing = True
-    else:
-        isbiword_indexing = False
     if directory == '1':
         corpus_path = corpus_path / 'Json Documents'
         corpus = DirectoryCorpus.load_json_directory(corpus_path, ".json")
-        if isbiword_indexing:
-            index = index_corpus(corpus, "biword indexing")
-        else:
-            index = index_corpus(corpus, "positional inverted indexing")
+        index = index_corpus(corpus, "positional inverted indexing")
     elif directory == '2':
         corpus_path = corpus_path / 'Mlb Documents'
         corpus = DirectoryCorpus.load_json_directory(corpus_path, ".json")
-        if isbiword_indexing:
-            index = index_corpus(corpus, "biword indexing")
-        else:
-            index = index_corpus(corpus, "soundex indexing")
+        index = index_corpus(corpus, "soundex indexing")
     else:
         corpus_path = corpus_path / 'MobyDicks Text Documents'
         corpus = DirectoryCorpus.load_text_directory(corpus_path, ".txt")
-        if isbiword_indexing:
-            index = index_corpus(corpus, "biword indexing")
-        else:
-            index = index_corpus(corpus, "positional inverted indexing")
+        index = index_corpus(corpus, "positional inverted indexing")
 
     if action == "vocab":
         vocabulary = index.get_vocabulary()
@@ -95,10 +81,10 @@ def start_program(directory, action):
             print(vocabulary[vocab])
         print("Total number of vocabulary terms: ", len(vocabulary))
 
-    process_queries(index, directory, corpus, starttime, isbiword_indexing)
+    process_queries(index, directory, corpus, starttime)
 
 
-def process_queries(index, directory, corpus, starttime, isbiword_indexing):
+def process_queries(index, directory, corpus, starttime):
     endtime = time.time()
     print('Time taken to load documents is: ', endtime - starttime)
     while True:
@@ -128,11 +114,6 @@ def process_queries(index, directory, corpus, starttime, isbiword_indexing):
                 token_processor = BasicTokenProcessor()
                 query = token_processor.process_token(query.split()[1])
                 found_documents = index.get_postings(query + " author")
-            elif isbiword_indexing:
-                terms = query.split()
-                for i in range(len(terms)):
-                    terms[i] = ''.join(token_processor.process_token(terms[i]))
-                found_documents = index.get_postings(terms)
             else:
                 q = parser.parse_query(query)
                 found_documents = q.get_postings(index, token_processor)

@@ -10,6 +10,7 @@ class PositionalInvertedIndex(Index):
     def __init__(self):
         """Constructs an empty index using the given vocabulary."""
         self.document_mapping = {}
+        self.document_mapping_biword = {}
 
     def add_term(self, term: str, doc_id: int, position: int):
         """Records that the given term occurred in the given document ID."""
@@ -24,6 +25,14 @@ class PositionalInvertedIndex(Index):
         else:
             self.document_mapping[term] = [[doc_id], [[position]]]
 
+    def add_term_biword(self, term: str, doc_id: int):
+        """Records that the given term occurred in the given document ID."""
+        if term in self.document_mapping_biword:
+            if self.document_mapping_biword[term][-1] != doc_id:
+                self.document_mapping_biword[term].append(doc_id)
+        else:
+            self.document_mapping_biword[term] = [doc_id]
+
     def get_postings(self, term: str) -> Iterable[Posting]:
         """Returns a list of Postings for all documents that contain the given term."""
         # TODO: implement this method.
@@ -37,6 +46,12 @@ class PositionalInvertedIndex(Index):
 
     def get_termInfo(self, term):
         return self.document_mapping[term]
+
+    def get_biwordTermInfo(self, term):
+        if term in self.document_mapping_biword:
+            return self.document_mapping_biword[term]
+        else:
+            return []
 
     def get_vocabulary(self) -> list[str]:
         vocabulary = list(sorted(self.document_mapping.keys()))
