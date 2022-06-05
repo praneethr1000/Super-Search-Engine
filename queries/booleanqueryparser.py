@@ -63,6 +63,7 @@ class BooleanQueryParser:
         while subquery[start_index] == ' ':
             start_index += 1
 
+        # Checks if it's a phrase literal based on the staring "(quotes)
         if subquery[start_index] == '"':
             start_index += 1
             next_quote = subquery.find('"', start_index)

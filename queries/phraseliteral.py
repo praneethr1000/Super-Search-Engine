@@ -11,6 +11,7 @@ class PhraseLiteral(QueryComponent):
         self.terms = [s for s in terms]
 
     def positional_merge(self, result):
+        # Performs the positional merge
         len_components = len(result)
         temp = result[0]
         curr = 1
@@ -52,6 +53,7 @@ class PhraseLiteral(QueryComponent):
     def get_postings(self, index, token_processor) -> list[Posting]:
         result = []
         if len(self.terms) == 2:
+            # Returns postings based on biword indexing
             postings = []
             terms = self.terms
             for i in range(len(terms)):
@@ -62,6 +64,7 @@ class PhraseLiteral(QueryComponent):
                 postings.append(Posting(doc))
             return postings
         else:
+            # Returns postings based on positional inverted indexing
             for term in self.terms:
                 term = ''.join(token_processor.process_token(term))
                 result.append(index.get_termInfo(term))

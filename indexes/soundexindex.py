@@ -3,11 +3,14 @@ from . import Posting, Index
 
 
 class SoundexIndex(Index):
-    """Implements an Sounded Index using a dictionary. Requires knowing the
-    vocabulary during the construction."""
+    """Implements an Sounded Index using a dictionary"""
 
     def __init__(self):
-        """Constructs an empty index using the given vocabulary."""
+        """
+            Document mapping contains the map between term and the 4 letter unique code.
+            Code mapping contains the map between the 4 letter code and the documents that have that term
+            Body tag terms contains the terms that are present in body but not in author names.
+        """
         self.document_mapping = {}
         self.code_mapping = {}
         self.body_tag_terms = set()
@@ -68,10 +71,10 @@ class SoundexIndex(Index):
 
     def get_postings(self, term: str) -> Iterable[Posting]:
         """Returns a list of Postings for all documents that contain the given term."""
-        # TODO: implement this method.
         tags = term.split()
         postings = []
         if tags[-1] != 'author' and tags[0] not in self.body_tag_terms:
+            # If it's a term from body and it's not present in body tag but present in author names
             return postings
         if tags[0] in self.document_mapping:
             for doc in self.code_mapping[self.document_mapping[tags[0]]]:
