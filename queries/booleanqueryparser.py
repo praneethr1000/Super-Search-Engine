@@ -1,5 +1,4 @@
-from . import AndQuery, OrQuery, QueryComponent, TermLiteral, PhraseLiteral
-import re
+from . import AndQuery, OrQuery, QueryComponent, TermLiteral, PhraseLiteral, NearLiteral
 
 
 class BooleanQueryParser:
@@ -57,7 +56,6 @@ class BooleanQueryParser:
         Locates and returns the next literal from the given subquery string.
         """
         sub_length = len(subquery)
-        length_out = 0
 
         # Skip past white space.
         while subquery[start_index] == ' ':
@@ -73,19 +71,30 @@ class BooleanQueryParser:
                 PhraseLiteral(subquery[start_index:start_index + length_out].split())
             )
 
-        # Locate the next space to find the end of this literal.
-        next_space = subquery.find(' ', start_index)
-        if next_space < 0:
-            # No more literals in this subquery.
-            length_out = sub_length - start_index
+        # Checks if it's a near literal based on the staring [ brackets
+        elif subquery[start_index] == '[':
+            start_index += 1
+            next_bracket = subquery.find(']', start_index)
+            query = subquery[start_index:next_bracket]
+            length_out = next_bracket - start_index
+            return BooleanQueryParser._Literal(
+                BooleanQueryParser._StringBounds(start_index, length_out + 1),
+                NearLiteral(query.split(" "))
+            )
         else:
-            length_out = next_space - start_index
+            # Locate the next space to find the end of this literal.
+            next_space = subquery.find(' ', start_index)
+            if next_space < 0:
+                # No more literals in this subquery.
+                length_out = sub_length - start_index
+            else:
+                length_out = next_space - start_index
 
-        # This is a term literal containing a single term.
-        return BooleanQueryParser._Literal(
-            BooleanQueryParser._StringBounds(start_index, length_out),
-            TermLiteral(subquery[start_index:start_index + length_out])
-        )
+            # This is a term literal containing a single term.
+            return BooleanQueryParser._Literal(
+                BooleanQueryParser._StringBounds(start_index, length_out),
+                TermLiteral(subquery[start_index:start_index + length_out])
+            )
 
     # Instead of assuming that we only have single-term literals, modify this method so it will create a PhraseLiteral
     # object if the first non-space character you find is a double-quote ("). In this case, the literal is not ended

@@ -2,7 +2,7 @@ from indexes.postings import Posting
 from .querycomponent import QueryComponent
 
 
-class PhraseLiteral(QueryComponent):
+class NearLiteral(QueryComponent):
     """
     Represents a phrase literal consisting of one or more terms that must occur in sequence.
     """
@@ -10,8 +10,8 @@ class PhraseLiteral(QueryComponent):
     def __init__(self, terms: list[str]):
         self.terms = [s for s in terms]
 
-    def positional_merge(self, result):
-        # Performs the positional merge
+    def check_k_positions(self, result, k):
+        # Check if the terms are k indexes near
         len_components = len(result)
         temp = result[0]
         curr = 1
@@ -24,7 +24,7 @@ class PhraseLiteral(QueryComponent):
                 if first[0][i] == second[0][j]:
                     pos1, pos2 = 0, 0
                     while pos1 < len(first[1][i]) and pos2 < len(second[1][j]):
-                        if first[1][i][pos1] == second[1][j][pos2] - 1:
+                        if first[1][i][pos1] == second[1][j][pos2] - k:
                             if temp and temp[0][-1] != first[0][i]:
                                 temp[0].append(first[0][i])
                                 temp[1].append([second[1][j][pos2]])
@@ -52,28 +52,28 @@ class PhraseLiteral(QueryComponent):
 
     def get_postings(self, index, token_processor) -> list[Posting]:
         result = []
-        if len(self.terms) == 2:
-            # Returns postings based on biword indexing
-            postings = []
-            terms = self.terms
-            for i in range(len(terms)):
-                terms[i] = ''.join(token_processor.process_token(terms[i]))
-            query = ' '.join(terms)
-            document_mapping = index.get_biwordTermInfo(query)
-            for doc in document_mapping:
+        all_terms = self.terms
+        k_index = []
+        terms = []
+        for i in range(len(all_terms)):
+            if 'near' in all_terms[i].lower():
+                k = all_terms[i].split("/")[1]
+                k_index.append(int(k))
+            else:
+                terms.append(all_terms[i])
+        for term in terms:
+            term = ''.join(token_processor.process_token(term))
+            result.append(index.get_termInfo(term))
+        documents = [result[0]]
+        for i in range(1, len(k_index)+1):
+            documents.append(result[i])
+            documents = [self.check_k_positions(documents, k_index[i-1])]
+
+        postings = []
+        if documents[0]:
+            for doc in documents[0][0]:
                 postings.append(Posting(doc))
-            return postings
-        else:
-            # Returns postings based on positional inverted indexing
-            for term in self.terms:
-                term = ''.join(token_processor.process_token(term))
-                result.append(index.get_termInfo(term))
-            documents = self.positional_merge(result)
-            postings = []
-            if documents:
-                for doc in documents[0]:
-                    postings.append(Posting(doc))
-            return postings
+        return postings
 
     def __str__(self) -> str:
         return '"' + " ".join(self.terms) + '"'

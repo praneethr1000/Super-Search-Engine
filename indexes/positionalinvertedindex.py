@@ -45,7 +45,10 @@ class PositionalInvertedIndex(Index):
         return postings
 
     def get_termInfo(self, term):
-        return self.document_mapping[term]
+        if term in self.document_mapping:
+            return self.document_mapping[term]
+        else:
+            return [[], [[]]]
 
     def get_biwordTermInfo(self, term):
         if term in self.document_mapping_biword:
