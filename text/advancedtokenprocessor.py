@@ -1,5 +1,5 @@
 from .tokenprocessor import TokenProcessor
-from nltk.stem import PorterStemmer
+from porter2stemmer import Porter2Stemmer
 
 
 class AdvancedTokenProcessor(TokenProcessor):
@@ -7,7 +7,7 @@ class AdvancedTokenProcessor(TokenProcessor):
     from the beginning and end of the token, and converting it to all lowercase."""
 
     def stem_tokens(self, tokens: list[str]) -> list[str]:
-        ps = PorterStemmer()
+        ps = Porter2Stemmer()
 
         for index, w in enumerate(tokens):
             tokens[index] = ps.stem(w)

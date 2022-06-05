@@ -24,10 +24,10 @@ class PhraseLiteral(QueryComponent):
                     pos1, pos2 = 0, 0
                     while pos1 < len(first[1][i]) and pos2 < len(second[1][j]):
                         if first[1][i][pos1] == second[1][j][pos2] - 1:
-                            if temp and temp[-1][-1] != first[1][i]:
+                            if temp and temp[0][-1] != first[0][i]:
                                 temp[0].append(first[0][i])
                                 temp[1].append([second[1][j][pos2]])
-                            elif temp and temp[-1][-1] == first[1][i]:
+                            elif temp and temp[0][-1] == first[0][i]:
                                 temp[1][-1].append(second[1][j][pos2])
                             else:
                                 temp = [[first[0][i]], [[second[1][j][pos2]]]]
@@ -54,6 +54,7 @@ class PhraseLiteral(QueryComponent):
         for term in self.terms:
             term = ''.join(token_processor.process_token(term))
             result.append(index.get_termInfo(term))
+        print(result)
         documents = self.positional_merge(result)
         final_result = [-1]
         for doc in documents[0]:

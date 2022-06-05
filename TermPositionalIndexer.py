@@ -17,15 +17,21 @@ def index_corpus(corpus: DirectoryCorpus, index: str):
 
     for d in corpus:
         document_content = EnglishTokenStream(d.get_content())
-        if index != "soundex indexing":
+        if index == "positional inverted indexing":
             for position, document in enumerate(document_content):
                 tokens = token_processor.process_token(document)
                 for token in tokens:
-                    if index == "positional inverted indexing":
-                        document_index.add_term(token, d.id, position + 1)
-                    else:
-                        document_index.add_term(token, d.id)
-        elif index == "soundex indexing":
+                    document_index.add_term(token, d.id, position + 1)
+        elif index == "biword indexing":
+            terms = []
+            for term in document_content:
+                terms.append(term)
+            len_document = len(terms)
+            for i in range(len_document-1):
+                term1 = ''.join(token_processor.process_token(terms[i]))
+                term2 = ''.join(token_processor.process_token(terms[i+1]))
+                document_index.add_term(term1+" "+term2, d.id)
+        else:
             for document in document_content:
                 tokens = token_processor.process_token(document)
                 for token in tokens:
@@ -123,8 +129,10 @@ def process_queries(index, directory, corpus, starttime, isbiword_indexing):
                 query = token_processor.process_token(query.split()[1])
                 found_documents = index.get_postings(query + " author")
             elif isbiword_indexing:
-                query = token_processor.process_token(query)
-                found_documents = index.get_postings(query[0].split())
+                terms = query.split()
+                for i in range(len(terms)):
+                    terms[i] = ''.join(token_processor.process_token(terms[i]))
+                found_documents = index.get_postings(terms)
             else:
                 q = parser.parse_query(query)
                 found_documents = q.get_postings(index, token_processor)
@@ -132,10 +140,12 @@ def process_queries(index, directory, corpus, starttime, isbiword_indexing):
                 print("None of the document contains the term searched for!")
             else:
                 for doc in found_documents:
-                    if action_to_perform == "author" or corpus.get_document(int(doc.doc_id)).author != "No info about author":
-                        print(f"{str(doc.doc_id) + '.' + corpus.get_document(int(doc.doc_id)).title + ' by ' + corpus.get_document(int(doc.doc_id)).author}")
+                    if action_to_perform == "author" or corpus.get_document(
+                            int(doc.doc_id)).author != "No info about author":
+                        print(
+                            f"{str(doc.doc_id) + '.' + corpus.get_document(int(doc.doc_id)).title + ' by ' + corpus.get_document(int(doc.doc_id)).author}")
                     else:
-                        print(f"{str(doc.doc_id) + '.' +corpus.get_document(int(doc.doc_id)).title}")
+                        print(f"{str(doc.doc_id) + '.' + corpus.get_document(int(doc.doc_id)).title}")
                 print("\nNumber of documents with the term: ", len(found_documents))
                 see_document_content = input("\nDo you want to view a document? Type Yes or No: ")
                 if see_document_content.lower() == 'yes':
