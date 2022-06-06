@@ -24,7 +24,7 @@ class NearLiteral(QueryComponent):
                 if first[0][i] == second[0][j]:
                     pos1, pos2 = 0, 0
                     while pos1 < len(first[1][i]) and pos2 < len(second[1][j]):
-                        if first[1][i][pos1] == second[1][j][pos2] - k:
+                        if 0 < (second[1][j][pos2] - first[1][i][pos1]) <= k:
                             if temp and temp[0][-1] != first[0][i]:
                                 temp[0].append(first[0][i])
                                 temp[1].append([second[1][j][pos2]])
