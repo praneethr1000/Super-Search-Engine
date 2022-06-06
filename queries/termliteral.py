@@ -11,7 +11,7 @@ class TermLiteral(QueryComponent):
         self.term = term
 
     def get_postings(self, index, token_processor) -> list[Posting]:
-        term = ''.join(token_processor.process_token(self.term))
+        term = ''.join(token_processor.process_token_without_hyphen(self.term))
         return index.get_postings(term)
 
     def __str__(self) -> str:

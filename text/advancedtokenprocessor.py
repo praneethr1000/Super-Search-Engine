@@ -13,7 +13,7 @@ class AdvancedTokenProcessor(TokenProcessor):
             tokens[index] = ps.stem(w)
         return tokens
 
-    def process_token(self, token: str) -> list[str]:
+    def token_formater(self, token: str) -> str:
         """ Removing all non-alphanumeric characters from the beginning and end of the token """
 
         while len(token) > 0 and not token[0].isalnum():
@@ -22,9 +22,20 @@ class AdvancedTokenProcessor(TokenProcessor):
             token = token[:-1]
 
         """ Replacing quotes , converting to lower and splitting if hyphen is present """
+        term = token.lower().replace('"', '').replace("'", '')
+        return term
 
-        tokens = token.lower().replace('"', '').replace("'", '').split("-")
-
+    def process_token(self, token: str) -> list[str]:
+        # Process token with hyphen split
+        term = self.token_formater(token)
+        tokens = term.split("-")
         if len(tokens) > 1:
             tokens.append(''.join(tokens))
+            tokens.append(term)
+        return self.stem_tokens(tokens)
+
+    def process_token_without_hyphen(self, token: str) -> list[str]:
+        # Process token without hyphen split
+        term = self.token_formater(token)
+        tokens = term.split(" ")
         return self.stem_tokens(tokens)

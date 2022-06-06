@@ -62,7 +62,7 @@ class NearLiteral(QueryComponent):
             else:
                 terms.append(all_terms[i])
         for term in terms:
-            term = ''.join(token_processor.process_token(term))
+            term = ''.join(token_processor.process_token_without_hyphen(term))
             result.append(index.get_termInfo(term))
         documents = [result[0]]
         for i in range(1, len(k_index)+1):
