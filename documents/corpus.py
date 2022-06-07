@@ -3,6 +3,7 @@ from typing import Iterable
 
 from .document import Document
 
+
 class DocumentCorpus(ABC):
     """Represents a collection of documents used to build an index."""
 
@@ -21,7 +22,5 @@ class DocumentCorpus(ABC):
         """Returns the document with the given document ID."""
         pass
 
-
     def __iter__(self) -> Iterable[Document]:
         pass
-

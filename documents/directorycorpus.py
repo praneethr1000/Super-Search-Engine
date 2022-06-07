@@ -1,12 +1,10 @@
-from ast import Str
-import os
-from pyclbr import Function
 from typing import Callable, Iterable, Iterator
 
 from documents.document import Document
 from . import textfiledocument, jsonfiledocument
 from pathlib import Path
-import json
+
+
 
 class DirectoryCorpus:
     """A DirectoryCorpus represents a corpus found in a single directory on a local file system."""

@@ -16,7 +16,15 @@ class JsonFileDocument(Document):
 
     @property
     def title(self) -> str:
-        return self.path.stem
+        with open(self.path, encoding='utf-8') as f:
+            data = json.load(f)
+        return data['title']
+
+    @property
+    def author(self) -> str:
+        with open(self.path, encoding='utf-8') as f:
+            data = json.load(f)
+        return data['author'] if 'author' in data else 'No info about author'
 
     # returnsJsonIOWrapper
     def get_content(self) -> Iterable[str]:

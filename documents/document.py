@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
 from typing import Iterable
+
+
 class Document(ABC):
     """Represents an abstract grouping of content in a corpus."""
 
-    def __init__(self, doc_id : int):
+    def __init__(self, doc_id: int):
         self.id = doc_id
 
     @abstractmethod
@@ -14,4 +16,9 @@ class Document(ABC):
     @abstractmethod
     def title(self) -> str:
         """The title of the document, for displaying to the user."""
+        pass
+
+    @abstractmethod
+    def author(self) -> str:
+        """The author of the document, for displaying to the user."""
         pass

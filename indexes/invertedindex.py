@@ -1,4 +1,3 @@
-from decimal import InvalidOperation
 from typing import Iterable
 from . import Posting, Index
 
