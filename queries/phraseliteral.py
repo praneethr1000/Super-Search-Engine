@@ -66,7 +66,7 @@ class PhraseLiteral(QueryComponent):
         else:
             # Returns postings based on positional inverted indexing
             for term in self.terms:
-                term = ''.join(token_processor.process_token_without_hypen(term))
+                term = ''.join(token_processor.process_token_without_hyphen(term))
                 result.append(index.get_termInfo(term))
             documents = self.positional_merge(result)
             postings = []
