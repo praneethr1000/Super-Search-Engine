@@ -1,6 +1,7 @@
 from pathlib import Path
 from documents import DirectoryCorpus
 from indexes import PositionalInvertedIndex, SoundexIndex
+from indexes.diskindexwriter import DiskIndexWriter
 from queries import BooleanQueryParser
 from text import AdvancedTokenProcessor, EnglishTokenStream, BasicTokenProcessor
 import time
@@ -68,6 +69,9 @@ def start_program(directory):
 def process_queries(index, corpus, starttime):
     endtime = time.time()
     print('\nTime taken to load documents is: ', round(endtime - starttime), 'seconds')
+    disk_writer = DiskIndexWriter()
+    disk_writer.writeIndex(index, "D:\\LongBeach\\Sem2-Summer\\SearchEngineProject\\index\\postings.bin")
+    return
     while True:
         display_options()
         query = input("\nEnter a term to search: ")
