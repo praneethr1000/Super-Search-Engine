@@ -1,7 +1,9 @@
+import math
 from pathlib import Path
 from documents import DirectoryCorpus
 from indexes import PositionalInvertedIndex, SoundexIndex
 from indexes.diskindexwriter import DiskIndexWriter
+from indexes.diskpositionalindex import DiskPositionalIndex
 from queries import BooleanQueryParser
 from text import AdvancedTokenProcessor, EnglishTokenStream, BasicTokenProcessor
 import time
@@ -13,7 +15,7 @@ def index_corpus(corpus: DirectoryCorpus, index: str):
         document_index = PositionalInvertedIndex()
     else:
         document_index = SoundexIndex()
-
+    ld = {}
     for d in corpus:
         document_content = EnglishTokenStream(d.get_content())
         # Performs both positional inverted indexing and biword indexing
@@ -22,12 +24,23 @@ def index_corpus(corpus: DirectoryCorpus, index: str):
             for term in document_content:
                 terms.append(token_processor.process_token(term))
             len_document = len(terms)
+            tftd = {}
+
             for i in range(len_document - 1):
                 term1 = terms[i]
                 term2 = ''.join(terms[i + 1])
                 document_index.add_term_biword(''.join(term1) + " " + term2, d.id)
                 for token in term1:
+                    if token in tftd:
+                        tftd[token] += 1
+                    else:
+                        tftd[token] = 1
                     document_index.add_term(token, d.id, i + 1)
+                wftd = 0
+                for key in tftd:
+                    wftd += (1 + math.log10(tftd[key])) ** 2
+                ld[d.id] = math.sqrt(wftd)
+
             if len_document >= 1:
                 final_term = terms[-1]
                 for token in final_term:
@@ -43,7 +56,11 @@ def index_corpus(corpus: DirectoryCorpus, index: str):
             for author in documents_author:
                 token = token_processor.process_token(author)
                 document_index.add_term(token, d.id, "author")
-    return document_index
+    disk_writer = DiskIndexWriter()
+    directory_path = Path()
+    disk_path = directory_path / 'index\\docWeights.bin'
+    disk_writer.write_ld(disk_path, ld)
+    return document_index, disk_writer
 
 
 def start_program(directory):
@@ -53,22 +70,27 @@ def start_program(directory):
     if directory == '1':
         corpus_path = corpus_path / 'Json Documents'
         corpus = DirectoryCorpus.load_json_directory(corpus_path, ".json")
-        index = index_corpus(corpus, "positional inverted indexing")
+        index, disk_writer = index_corpus(corpus, "positional inverted indexing")
     elif directory == '2':
         corpus_path = corpus_path / 'Mlb Documents'
         corpus = DirectoryCorpus.load_json_directory(corpus_path, ".json")
-        index = index_corpus(corpus, "soundex indexing")
+        index, disk_writer = index_corpus(corpus, "soundex indexing")
     else:
         corpus_path = corpus_path / 'MobyDicks Text Documents'
         corpus = DirectoryCorpus.load_text_directory(corpus_path, ".txt")
-        index = index_corpus(corpus, "positional inverted indexing")
+        index, disk_writer = index_corpus(corpus, "positional inverted indexing")
 
-    process_queries(index, corpus, starttime)
+    process_queries(index, corpus, starttime, disk_writer)
 
 
-def process_queries(index, corpus, starttime):
+def process_queries(index, corpus, starttime, disk_writer):
     endtime = time.time()
     print('\nTime taken to load documents is: ', round(endtime - starttime), 'seconds')
+    directory_path = Path()
+    disk_path = directory_path / 'index\\postings.bin'
+    disk_writer.writeIndex(index, disk_path)
+    disk_path = directory_path / 'index\\postings_biword.bin'
+    disk_writer.write_biword(index, disk_path)
     while True:
         display_options()
         query = input("\nEnter a term to search: ")
@@ -106,6 +128,11 @@ def process_queries(index, corpus, starttime):
 
 
 def normal_query_parser(first_word, query, index, corpus):
+    directory_path = Path()
+    vocab_disk_path = directory_path / 'index\\postings.bin'
+    ld_disk_path = directory_path / 'index\\docWeights.bin'
+    biword_vocab_disk_path = directory_path / 'index\\postings_biword.bin'
+    disk_index = DiskPositionalIndex(vocab_disk_path, ld_disk_path, biword_vocab_disk_path)
     parser = BooleanQueryParser()
     token_processor = AdvancedTokenProcessor()
     if first_word == ':author':
@@ -115,8 +142,8 @@ def normal_query_parser(first_word, query, index, corpus):
         found_documents = index.get_postings(query + " author")
     else:
         q = parser.parse_query(query)
-        found_documents = q.get_postings(index, token_processor)
-
+        found_documents = q.get_postings(disk_index, token_processor)
+        print(len(found_documents),"length")
     if not found_documents:
         print("\nNone of the document contains the term searched for!")
     else:
