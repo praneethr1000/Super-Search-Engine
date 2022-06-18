@@ -9,6 +9,7 @@ from indexes.diskpositionalindex import DiskPositionalIndex
 from queries import BooleanQueryParser
 from text import AdvancedTokenProcessor, EnglishTokenStream, BasicTokenProcessor
 import time
+from numpy import log
 
 
 def index_corpus(corpus: DirectoryCorpus, index: str):
@@ -47,7 +48,7 @@ def index_corpus(corpus: DirectoryCorpus, index: str):
                     document_index.add_term(token, d.id, len_document)
             wftd = 0
             for key in tftd:
-                wftd += (1 + math.log10(tftd[key])) ** 2
+                wftd += (1 + log(tftd[key])) ** 2
             ld[d.id] = math.sqrt(wftd)
         # Performs soundex indexing
         else:
@@ -191,32 +192,26 @@ def ranked_retrieval(corpus):
     biword_vocab_disk_path = directory_path / 'index\\postings_biword.bin'
     disk_index = DiskPositionalIndex(vocab_disk_path, ld_disk_path, biword_vocab_disk_path)
     terms = query.lower().split()
-    d = collections.defaultdict(float)
+    acc = collections.defaultdict(float)
     N = len(corpus.documents())
+    token_processor = AdvancedTokenProcessor()
     for term in terms:
-        token_processor = AdvancedTokenProcessor()
         term = ''.join(token_processor.process_token_without_hyphen(term))
         postings = disk_index.get_postings_with_positions(term)
-        documents = [i for i in postings[0]]
-        Dft = len(documents)
-        Wqt = math.log10(1+(N/Dft))
-        Ad = 0
-        for doc in documents:
+        Dft = len(postings[0])
+        Wqt = log(1 + (N / Dft))
+        for doc in postings[0]:
             tftd = len(postings[1][postings[0].index(doc)])
-            wdt = 1 + math.log10(tftd)
-            Ad += (Wqt * wdt)
-            if Ad != 0:
-                Ld = disk_index.get_lds(doc)
-                d[doc] += float(Ad / Ld)
-    Ad = {}
-    for i in d:
-        Ad[d[i]] = i
-    h = []
-    for value in list(Ad.keys()):
-        heapq.heappush(h, value)
-    nlargest = heapq.nlargest(10, h)
-    for i in nlargest:
-        print(f"{str(Ad[i]) + '. ' + corpus.get_document(int(Ad[i])).title + ' Acc: ' + str(i)}")
+            wdt = 1 + log(tftd)
+            acc[doc] += (Wqt * wdt)
+
+    for doc in acc.keys():
+        Ld = disk_index.get_lds(doc)
+        acc[doc] /= Ld
+    heap = [(score, doc_id) for doc_id, score in acc.items()]
+    nlargest = heapq.nlargest(10, heap)
+    for score, doc_id in nlargest:
+        print(f"{str(doc_id) + '. ' + corpus.get_document(int(doc_id)).title + ' Acc: ' + str(score)}")
 
 
 def display_options():
