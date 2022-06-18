@@ -64,7 +64,7 @@ class DiskIndexWriter:
                     prev_document = document
                     f.write(doc_id)
                     index_pos += 4
-        self.write_to_db(d)
+        self.write_biword_to_db(d)
 
     def write_soundex(self, index, disk_path):
         pass

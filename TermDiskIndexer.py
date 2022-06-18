@@ -192,13 +192,14 @@ def ranked_retrieval(corpus):
     disk_index = DiskPositionalIndex(vocab_disk_path, ld_disk_path, biword_vocab_disk_path)
     terms = query.lower().split()
     d = collections.defaultdict(float)
+    N = len(corpus.documents())
     for term in terms:
         token_processor = AdvancedTokenProcessor()
         term = ''.join(token_processor.process_token_without_hyphen(term))
         postings = disk_index.get_postings_with_positions(term)
         documents = [i for i in postings[0]]
-        Dft = 700 if term == 'black' else 200  # len(documents)
-        Wqt = math.log10((1000 / Dft))
+        Dft = len(documents)
+        Wqt = math.log10(1+(N/Dft))
         Ad = 0
         for doc in documents:
             tftd = len(postings[1][postings[0].index(doc)])

@@ -36,7 +36,8 @@ class DiskPositionalIndex:
                 if table == "vocab":
                     position = cursor.execute('select position from vocabulary where term LIKE ?', term).fetchall()[0]
                 elif table == "biword_vocab":
-                    position = cursor.execute('select position from biword_vocabulary where term LIKE ?', term).fetchall()[0]
+                    position = \
+                        cursor.execute('select position from biword_vocabulary where term LIKE ?', term).fetchall()[0]
                 else:
                     position = cursor.execute('select position from documentWeight where doc_id = ?', term).fetchall()[
                         0]
@@ -53,22 +54,17 @@ class DiskPositionalIndex:
         """ Return postings for term literals and ranked queries without positions."""
         position = self.get_position_from_db(term, "vocab")
         postings = []
-        print(position)
         with open(str(self.vocab_path), 'rb') as f:
-            for pos in position:
-                index_position = pos
-                f.seek(index_position)
-                doc_len = struct.unpack('>i', f.read(4))
-                index_position += 4
-                prev_document = 0
-                for i in range(doc_len[0]):
-                    doc_id = struct.unpack('>i', f.read(4))
-                    index_position += 4
-                    postings.append(Posting(doc_id[0] + prev_document))
-                    prev_document += doc_id[0]
-                    term_freq = struct.unpack('>i', f.read(4))
-                    index_position += 4
-                    f.seek(index_position + ((term_freq[0]) * 4))
+            f.seek(position[0])
+            doc_len = struct.unpack('>i', f.read(4))
+            prev_document = 0
+            for i in range(doc_len[0]):
+                doc_id = struct.unpack('>i', f.read(4))
+                postings.append(Posting(doc_id[0] + prev_document))
+                prev_document = doc_id[0] + prev_document
+                term_freq = struct.unpack('>i', f.read(4))
+                for j in range(term_freq[0]):
+                    f.read(4)
         return postings
 
     def get_postings_with_positions(self, term: str):
@@ -85,13 +81,13 @@ class DiskPositionalIndex:
                     if doc_id not in postings[0]:
                         postings[0].append(doc_id[0] + prev_document)
                         postings[1].append([])
-                    prev_document += doc_id[0]
+                    prev_document = doc_id[0] + prev_document
                     term_freq = struct.unpack('>i', f.read(4))
                     prev_position = 0
                     for j in range(term_freq[0]):
                         term_pos = struct.unpack('>i', f.read(4))
                         postings[1][-1].append(term_pos[0] + prev_position)
-                        prev_position += term_pos[0]
+                        prev_position = term_pos[0] + prev_position
         return postings
 
     def get_lds(self, doc_id: int):
