@@ -7,11 +7,12 @@ from . import Posting
 class DiskPositionalIndex:
     """Implements a Disk Positional Index."""
 
-    def __init__(self, vocab_path, ld_path, biword_vocab_path):
+    def __init__(self, vocab_path, ld_path, biword_vocab_path, soundex_vocab_disk_path):
         """Constructs an empty index using the given vocabulary."""
         self.vocab_path = vocab_path
         self.ld_path = ld_path
         self.biword_vocab_path = biword_vocab_path
+        self.soundex_vocab_disk_path = soundex_vocab_disk_path
 
     def create_db_connection(self):
         try:
@@ -38,6 +39,12 @@ class DiskPositionalIndex:
                 elif table == "biword_vocab":
                     position = \
                         cursor.execute('select position from biword_vocabulary where term LIKE ?', term).fetchall()[0]
+                elif table == "soundex_body_terms":
+                    position = cursor.execute('select term from soundex_mapping where body_tag = 1').fetchall()[0]
+                elif table == "soundex_mapped_term":
+                    position = cursor.execute('select mapping from soundex_mapping where term LIKE ?', term).fetchall()[0]
+                elif table == "soundex_vocab":
+                    position = cursor.execute('select mapping from soundex_vocabulary where term LIKE ?', term).fetchall()[0]
                 else:
                     position = cursor.execute('select position from documentWeight where doc_id = ?', term).fetchall()[
                         0]
@@ -120,13 +127,14 @@ class DiskPositionalIndex:
                     prev_document += doc_id[0]
         return postings
 
-    def get_vocabulary(self):
+    def get_vocabulary(self, directory):
+        table = "soundex_vocabulary" if directory == '2' else "vocabulary"
         # SQL CONNECTION
         conn, cursor = self.create_db_connection()
         # To delete the table before inserting again
         vocabulary = []
         try:
-            result = cursor.execute('select term from vocabulary').fetchall()
+            result = cursor.execute('select term from ' + table).fetchall()
             for row in result:
                 vocabulary.append(row[0])
         except Exception as e:
@@ -137,6 +145,25 @@ class DiskPositionalIndex:
         return vocabulary
 
     def get_soundex_postings(self, term: str) -> Iterable[Posting]:
-        """ Return postings for term literals and ranked queries without positions."""
-        # TODO: Implement this
-        return []
+        """ Return postings for soundex algorithm terms"""
+        tags = term.split()
+        postings = []
+        body_tag_terms = self.get_position_from_db(term, "soundex_body_terms")
+        mapped_term = self.get_position_from_db(term, "soundex_mapped_term")
+        if tags[-1] != 'author' and tags[0] not in body_tag_terms:
+            # If it's a term from body, and it's not present in body tag but present in author names
+            return postings
+        if mapped_term:
+            position = self.get_position_from_db(term, "soundex_vocab")
+            with open(str(self.biword_vocab_path), 'rb') as f:
+                for pos in position:
+                    f.seek(pos)
+                    doc_len = struct.unpack('>i', f.read(4))
+                    prev_document = 0
+                    for i in range(doc_len[0]):
+                        doc_id = struct.unpack('>i', f.read(4))
+                        postings.append(Posting(doc_id[0] + prev_document))
+                        prev_document += doc_id[0]
+        return postings
+
+

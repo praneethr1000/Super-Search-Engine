@@ -99,12 +99,12 @@ def start_program(directory):
     query_type = input(
         "\n\t  Choose the option \nEnter 1 for Boolean Retrieval \n\t\t\t or \nEnter other key for Ranked Retrieval: ")
     if query_type == '1':
-        process_queries(corpus, starttime)
+        process_queries(corpus, starttime, directory)
     else:
         ranked_retrieval(corpus)
 
 
-def process_queries(corpus, starttime):
+def process_queries(corpus, starttime, directory):
     endtime = time.time()
     print('\nTime taken to load documents is: ', round(endtime - starttime), 'seconds')
     while True:
@@ -114,7 +114,8 @@ def process_queries(corpus, starttime):
         vocab_disk_path = directory_path / 'index\\postings.bin'
         ld_disk_path = directory_path / 'index\\docWeights.bin'
         biword_vocab_disk_path = directory_path / 'index\\postings_biword.bin'
-        disk_index = DiskPositionalIndex(vocab_disk_path, ld_disk_path, biword_vocab_disk_path)
+        soundex_vocab_disk_path = directory_path / 'index\\postings_soundex.bin'
+        disk_index = DiskPositionalIndex(vocab_disk_path, ld_disk_path, biword_vocab_disk_path, soundex_vocab_disk_path)
         words = query.lower().split()
         first_word = words[0]
 
@@ -134,7 +135,7 @@ def process_queries(corpus, starttime):
                 start_program('3')
             break
         elif first_word == ':vocab':
-            vocabulary = disk_index.get_vocabulary()
+            vocabulary = disk_index.get_vocabulary(directory)
             len_vocab = len(vocabulary)
             print()
             if len_vocab < 1000:
@@ -190,7 +191,8 @@ def ranked_retrieval(corpus):
     vocab_disk_path = directory_path / 'index\\postings.bin'
     ld_disk_path = directory_path / 'index\\docWeights.bin'
     biword_vocab_disk_path = directory_path / 'index\\postings_biword.bin'
-    disk_index = DiskPositionalIndex(vocab_disk_path, ld_disk_path, biword_vocab_disk_path)
+    soundex_vocab_disk_path = directory_path / 'index\\postings_soundex.bin'
+    disk_index = DiskPositionalIndex(vocab_disk_path, ld_disk_path, biword_vocab_disk_path, soundex_vocab_disk_path)
     terms = query.lower().split()
     acc = collections.defaultdict(float)
     N = len(corpus.documents())
