@@ -1,3 +1,5 @@
+import collections
+import heapq
 import math
 from pathlib import Path
 from documents import DirectoryCorpus
@@ -25,7 +27,6 @@ def index_corpus(corpus: DirectoryCorpus, index: str):
                 terms.append(token_processor.process_token(term))
             len_document = len(terms)
             tftd = {}
-
             for i in range(len_document - 1):
                 term1 = terms[i]
                 term2 = ''.join(terms[i + 1])
@@ -36,15 +37,18 @@ def index_corpus(corpus: DirectoryCorpus, index: str):
                     else:
                         tftd[token] = 1
                     document_index.add_term(token, d.id, i + 1)
-                wftd = 0
-                for key in tftd:
-                    wftd += (1 + math.log10(tftd[key])) ** 2
-                ld[d.id] = math.sqrt(wftd)
-
             if len_document >= 1:
                 final_term = terms[-1]
                 for token in final_term:
+                    if token in tftd:
+                        tftd[token] += 1
+                    else:
+                        tftd[token] = 1
                     document_index.add_term(token, d.id, len_document)
+            wftd = 0
+            for key in tftd:
+                wftd += (1 + math.log10(tftd[key])) ** 2
+            ld[d.id] = math.sqrt(wftd)
         # Performs soundex indexing
         else:
             for document in document_content:
@@ -63,6 +67,14 @@ def index_corpus(corpus: DirectoryCorpus, index: str):
     return document_index, disk_writer
 
 
+def write_to_disk(index, disk_writer):
+    directory_path = Path()
+    disk_path = directory_path / 'index\\postings.bin'
+    disk_writer.writeIndex(index, disk_path)
+    disk_path = directory_path / 'index\\postings_biword.bin'
+    disk_writer.write_biword(index, disk_path)
+
+
 def start_program(directory):
     corpus_path = Path()
     starttime = time.time()
@@ -71,29 +83,37 @@ def start_program(directory):
         corpus_path = corpus_path / 'Json Documents'
         corpus = DirectoryCorpus.load_json_directory(corpus_path, ".json")
         index, disk_writer = index_corpus(corpus, "positional inverted indexing")
+        write_to_disk(index, disk_writer)
     elif directory == '2':
         corpus_path = corpus_path / 'Mlb Documents'
         corpus = DirectoryCorpus.load_json_directory(corpus_path, ".json")
         index, disk_writer = index_corpus(corpus, "soundex indexing")
+        disk_path = corpus_path / 'index\\postings_soundex.bin'
+        disk_writer.write_soundex(index, disk_path)
     else:
         corpus_path = corpus_path / 'MobyDicks Text Documents'
         corpus = DirectoryCorpus.load_text_directory(corpus_path, ".txt")
         index, disk_writer = index_corpus(corpus, "positional inverted indexing")
+        write_to_disk(index, disk_writer)
+    query_type = input(
+        "\n\t  Choose the option \nEnter 1 for Boolean Retrieval \n\t\t\t or \nEnter other key for Ranked Retrieval: ")
+    if query_type == '1':
+        process_queries(corpus, starttime)
+    else:
+        ranked_retrieval(corpus)
 
-    process_queries(index, corpus, starttime, disk_writer)
 
-
-def process_queries(index, corpus, starttime, disk_writer):
+def process_queries(corpus, starttime):
     endtime = time.time()
     print('\nTime taken to load documents is: ', round(endtime - starttime), 'seconds')
-    directory_path = Path()
-    disk_path = directory_path / 'index\\postings.bin'
-    disk_writer.writeIndex(index, disk_path)
-    disk_path = directory_path / 'index\\postings_biword.bin'
-    disk_writer.write_biword(index, disk_path)
     while True:
         display_options()
-        query = input("\nEnter a term to search: ")
+        query = input("\nEnter a query to search: ")
+        directory_path = Path()
+        vocab_disk_path = directory_path / 'index\\postings.bin'
+        ld_disk_path = directory_path / 'index\\docWeights.bin'
+        biword_vocab_disk_path = directory_path / 'index\\postings_biword.bin'
+        disk_index = DiskPositionalIndex(vocab_disk_path, ld_disk_path, biword_vocab_disk_path)
         words = query.lower().split()
         first_word = words[0]
 
@@ -113,7 +133,7 @@ def process_queries(index, corpus, starttime, disk_writer):
                 start_program('3')
             break
         elif first_word == ':vocab':
-            vocabulary = index.get_vocabulary()
+            vocabulary = disk_index.get_vocabulary()
             len_vocab = len(vocabulary)
             print()
             if len_vocab < 1000:
@@ -124,26 +144,20 @@ def process_queries(index, corpus, starttime, disk_writer):
                     print(vocabulary[vocab])
             print("\nTotal number of vocabulary terms: ", len(vocabulary))
         else:
-            normal_query_parser(first_word, query, index, corpus)
+            normal_query_parser(first_word, query, corpus, disk_index)
 
 
-def normal_query_parser(first_word, query, index, corpus):
-    directory_path = Path()
-    vocab_disk_path = directory_path / 'index\\postings.bin'
-    ld_disk_path = directory_path / 'index\\docWeights.bin'
-    biword_vocab_disk_path = directory_path / 'index\\postings_biword.bin'
-    disk_index = DiskPositionalIndex(vocab_disk_path, ld_disk_path, biword_vocab_disk_path)
+def normal_query_parser(first_word, query, corpus, disk_index):
     parser = BooleanQueryParser()
     token_processor = AdvancedTokenProcessor()
     if first_word == ':author':
         # Checks if it needs basic or advanced token processing based on the Soundex algorithm
         token_processor = BasicTokenProcessor()
         query = token_processor.process_token(query.split()[1])
-        found_documents = index.get_postings(query + " author")
+        found_documents = disk_index.get_soundex_postings(query + " author")
     else:
         q = parser.parse_query(query)
         found_documents = q.get_postings(disk_index, token_processor)
-        print(len(found_documents),"length")
     if not found_documents:
         print("\nNone of the document contains the term searched for!")
     else:
@@ -169,6 +183,41 @@ def normal_query_parser(first_word, query, index, corpus):
                 print("\nPlease enter integer value")
 
 
+def ranked_retrieval(corpus):
+    query = input("\nEnter a query to search: ")
+    directory_path = Path()
+    vocab_disk_path = directory_path / 'index\\postings.bin'
+    ld_disk_path = directory_path / 'index\\docWeights.bin'
+    biword_vocab_disk_path = directory_path / 'index\\postings_biword.bin'
+    disk_index = DiskPositionalIndex(vocab_disk_path, ld_disk_path, biword_vocab_disk_path)
+    terms = query.lower().split()
+    d = collections.defaultdict(float)
+    for term in terms:
+        token_processor = AdvancedTokenProcessor()
+        term = ''.join(token_processor.process_token_without_hyphen(term))
+        postings = disk_index.get_postings_with_positions(term)
+        documents = [i for i in postings[0]]
+        Dft = 700 if term == 'black' else 200  # len(documents)
+        Wqt = math.log10((1000 / Dft))
+        Ad = 0
+        for doc in documents:
+            tftd = len(postings[1][postings[0].index(doc)])
+            wdt = 1 + math.log10(tftd)
+            Ad += (Wqt * wdt)
+            if Ad != 0:
+                Ld = disk_index.get_lds(doc)
+                d[doc] += float(Ad / Ld)
+    Ad = {}
+    for i in d:
+        Ad[d[i]] = i
+    h = []
+    for value in list(Ad.keys()):
+        heapq.heappush(h, value)
+    nlargest = heapq.nlargest(10, h)
+    for i in nlargest:
+        print(f"{str(Ad[i]) + '. ' + corpus.get_document(int(Ad[i])).title + ' Acc: ' + str(i)}")
+
+
 def display_options():
     print("""
     <-----  Possible options ---- >
@@ -183,10 +232,35 @@ def display_options():
 
 
 def main():
+    disk = input(
+        "\t  Choose the option \nEnter 1 to do indexing and write to disk \n\t\t\t or \nEnter other key to load from disk: ")
     directory = input(
-        "\t  Choose the directory \nEnter 1 to choose Json Documents \n\t\t\t or \nEnter 2 to choose "
+        "\n\t  Choose the directory \nEnter 1 to choose Json Documents \n\t\t\t or \nEnter 2 to choose "
         "Json Documents for Soundex algorithm \n\t\t\t or \nEnter any other key to choose Text documents: ")
-    start_program(directory)
+    if disk != '1':
+        corpus_path = Path()
+        starttime = time.time()
+        # Build the index over the selected directory.
+        if directory == '1':
+            corpus_path = corpus_path / 'Json Documents'
+            corpus = DirectoryCorpus.load_json_directory(corpus_path, ".json")
+        elif directory == '2':
+            corpus_path = corpus_path / 'Mlb Documents'
+            corpus = DirectoryCorpus.load_json_directory(corpus_path, ".json")
+        else:
+            corpus_path = corpus_path / 'MobyDicks Text Documents'
+            corpus = DirectoryCorpus.load_text_directory(corpus_path, ".txt")
+        # To initialize title and author name
+        for _ in corpus:
+            pass
+        query_type = input(
+            "\n\t  Choose the option \nEnter 1 for Boolean Retrieval \n\t\t\t or \nEnter other key for Ranked Retrieval: ")
+        if query_type == '1':
+            process_queries(corpus, starttime)
+        else:
+            ranked_retrieval(corpus)
+    else:
+        start_program(directory)
 
 
 if __name__ == "__main__":
