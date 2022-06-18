@@ -44,7 +44,7 @@ class DiskPositionalIndex:
                 elif table == "soundex_mapped_term":
                     position = cursor.execute('select mapping from soundex_mapping where term LIKE ?', term).fetchall()[0]
                 elif table == "soundex_vocab":
-                    position = cursor.execute('select mapping from soundex_vocabulary where term LIKE ?', term).fetchall()[0]
+                    position = cursor.execute('select position from soundex_vocabulary where term LIKE ?', term).fetchall()[0]
                 else:
                     position = cursor.execute('select position from documentWeight where doc_id = ?', term).fetchall()[
                         0]
@@ -149,13 +149,13 @@ class DiskPositionalIndex:
         tags = term.split()
         postings = []
         body_tag_terms = self.get_position_from_db(term, "soundex_body_terms")
-        mapped_term = self.get_position_from_db(term, "soundex_mapped_term")
+        mapped_term = self.get_position_from_db(tags[0], "soundex_mapped_term")
         if tags[-1] != 'author' and tags[0] not in body_tag_terms:
             # If it's a term from body, and it's not present in body tag but present in author names
             return postings
         if mapped_term:
-            position = self.get_position_from_db(term, "soundex_vocab")
-            with open(str(self.biword_vocab_path), 'rb') as f:
+            position = self.get_position_from_db(mapped_term, "soundex_vocab")
+            with open(str(self.soundex_vocab_disk_path), 'rb') as f:
                 for pos in position:
                     f.seek(pos)
                     doc_len = struct.unpack('>i', f.read(4))

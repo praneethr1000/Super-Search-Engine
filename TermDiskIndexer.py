@@ -86,10 +86,10 @@ def start_program(directory):
         index, disk_writer = index_corpus(corpus, "positional inverted indexing")
         write_to_disk(index, disk_writer)
     elif directory == '2':
+        disk_path = corpus_path / 'index\\postings_soundex.bin'
         corpus_path = corpus_path / 'Mlb Documents'
         corpus = DirectoryCorpus.load_json_directory(corpus_path, ".json")
         index, disk_writer = index_corpus(corpus, "soundex indexing")
-        disk_path = corpus_path / 'index\\postings_soundex.bin'
         disk_writer.write_soundex(index, disk_path)
     else:
         corpus_path = corpus_path / 'MobyDicks Text Documents'
@@ -254,7 +254,7 @@ def main():
         query_type = input(
             "\n\t  Choose the option \nEnter 1 for Boolean Retrieval \n\t\t\t or \nEnter other key for Ranked Retrieval: ")
         if query_type == '1':
-            process_queries(corpus, starttime)
+            process_queries(corpus, starttime, directory)
         else:
             ranked_retrieval(corpus)
     else:
