@@ -21,6 +21,10 @@ class JsonFileDocument(Document):
         return data['title']
 
     @property
+    def fileName(self) -> str:
+        return self.path.stem
+
+    @property
     def author(self) -> str:
         with open(self.path, encoding='utf-8') as f:
             data = json.load(f)

@@ -30,3 +30,7 @@ class TextFileDocument(Document):
     def load_from(abs_path: Path, doc_id: int) -> 'TextFileDocument':
         """A factory method to create a TextFileDocument around the given file path."""
         return TextFileDocument(doc_id, abs_path)
+
+    @property
+    def fileName(self) -> str:
+        return self.path.stem

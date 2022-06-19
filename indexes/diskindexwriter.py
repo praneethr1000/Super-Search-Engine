@@ -39,16 +39,22 @@ class DiskIndexWriter:
                         prev_position = position
         self.write_to_db(d)
 
-    def write_ld(self, path, ld):
+    def write_docAtt(self, path, ld, docLenD, byteSize, aveTftd):
         with open(str(path), 'wb') as f:
             d = {}
             index_pos = 0
             for doc in ld:
                 d[doc] = index_pos
-                ld_document = struct.pack('>d', float(ld[doc]))
-                f.write(ld_document)
-                index_pos += 8
-        self.write_ld_to_db(d)
+                f.write(struct.pack('>d', float(ld[doc])))
+                f.write(struct.pack('>i', docLenD[doc]))
+                f.write(struct.pack('>i', byteSize[doc]))
+                f.write(struct.pack('>d', float(aveTftd[doc])))
+                index_pos += 24
+        self.write_docAtt_to_db(d, "documentWeight")
+
+    def write_docLen(self, path, docLenA):
+        with open(str(path), 'wb') as f:
+            f.write(struct.pack('>d', float(docLenA)))
 
     def write_biword(self, index, path):
         vocab = index.get_biword_vocabulary()
@@ -104,23 +110,23 @@ class DiskIndexWriter:
         except Exception as e:
             print(e)
 
-    def write_ld_to_db(self, ld):
+    def write_docAtt_to_db(self, ld, table):
         # SQL CONNECTION
         conn, cursor = self.create_db_connection()
         # To delete the table before inserting again
         try:
-            cursor.execute("drop table documentWeight;")
+            cursor.execute("drop table +"+table+";")
         except Exception as e:
             print(e)
         # To create a table
         try:
-            cursor.execute("create table documentWeight(doc_id int, position int);")
+            cursor.execute("create table +"+table+"(doc_id int, position int);")
         except Exception as e:
             print(e)
         # To insert positions
         for doc_id in ld:
             try:
-                cursor.execute("INSERT INTO documentWeight VALUES(?,?)", (doc_id, ld[doc_id]))
+                cursor.execute("INSERT INTO +"+table+" VALUES(?,?)", (doc_id, ld[doc_id]))
             except Exception as e:
                 print(e)
 

@@ -22,3 +22,8 @@ class Document(ABC):
     def author(self) -> str:
         """The author of the document, for displaying to the user."""
         pass
+
+    @abstractmethod
+    def fileName(self) -> str:
+        """The fileName of the document, for displaying to the user."""
+        pass

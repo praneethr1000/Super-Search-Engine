@@ -37,8 +37,7 @@ class DiskPositionalIndex:
                 if table == "vocab":
                     position = cursor.execute('select position from vocabulary where term LIKE ?', term).fetchall()[0]
                 elif table == "biword_vocab":
-                    position = \
-                        cursor.execute('select position from biword_vocabulary where term LIKE ?', term).fetchall()[0]
+                    position = cursor.execute('select position from biword_vocabulary where term LIKE ?', term).fetchall()[0]
                 elif table == "soundex_body_terms":
                     position = cursor.execute('select term from soundex_mapping where body_tag = 1').fetchall()[0]
                 elif table == "soundex_mapped_term":
@@ -46,8 +45,7 @@ class DiskPositionalIndex:
                 elif table == "soundex_vocab":
                     position = cursor.execute('select position from soundex_vocabulary where term LIKE ?', term).fetchall()[0]
                 else:
-                    position = cursor.execute('select position from documentWeight where doc_id = ?', term).fetchall()[
-                        0]
+                    position = cursor.execute('select position from documentWeight where doc_id = ?', term).fetchall()[0]
             except Exception as e:
                 print(e)
             # connection is not autocommit by default. So we must commit to save our changes.
@@ -97,14 +95,27 @@ class DiskPositionalIndex:
                         prev_position = term_pos[0] + prev_position
         return postings
 
-    def get_lds(self, doc_id: int):
+    def get_docAtt(self, doc_id: int, rank_strategy):
         position = self.get_position_from_db(doc_id, "docWeights")
-        doc_weight = 0
+        doc_weight, doc_len, byte_size, ave_tftd = 0, 0, 0, 0
         with open(str(self.ld_path), 'rb') as f:
             for pos in position:
                 f.seek(pos)
                 doc_weight = struct.unpack('>d', f.read(8))[0]
-        return doc_weight
+                doc_len = struct.unpack('>i', f.read(4))[0]
+                byte_size = struct.unpack('>i', f.read(4))[0]
+                ave_tftd = struct.unpack('>d', f.read(8))[0]
+        if rank_strategy == "default" or rank_strategy == "traditional":
+            return doc_weight
+        elif rank_strategy == "okapi":
+            return doc_len
+        else:
+            return ave_tftd, byte_size
+
+    def get_docLen(self):
+        with open(str(self.ld_path), 'rb') as f:
+            doc_len = struct.unpack('>d', f.read(8))[0]
+        return doc_len
 
     def get_termInfo(self, term):
         position = self.get_position_from_db(term, "vocab")
