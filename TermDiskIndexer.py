@@ -14,6 +14,7 @@ from numpy import log
 
 
 def index_corpus(corpus: DirectoryCorpus, index: str):
+    print("\nIndexing started")
     token_processor = AdvancedTokenProcessor()
     if index == "positional inverted indexing":
         document_index = PositionalInvertedIndex()
@@ -25,8 +26,7 @@ def index_corpus(corpus: DirectoryCorpus, index: str):
     docLenD = {}
     aveTftd = {}
     for d in corpus:
-        file_size = os.path.getsize(d.fileName())
-        byteSize[d.id] = file_size
+        byteSize[d.id] = os.path.getsize(d.path)
         document_content = EnglishTokenStream(d.get_content())
         # Performs both positional inverted indexing and biword indexing
         if index == "positional inverted indexing":
@@ -56,7 +56,11 @@ def index_corpus(corpus: DirectoryCorpus, index: str):
                         tftd[token] = 1
                     document_index.add_term(token, d.id, len_document)
             wftd = 0
-            aveTftd[d.id] = sum(tftd.values()) / len(tftd.keys())
+            len_tokens = len(tftd.keys())
+            if len_tokens:
+                aveTftd[d.id] = sum(tftd.values()) / len(tftd.keys())
+            else:
+                aveTftd[d.id] = 0
             for key in tftd:
                 wftd += (1 + log(tftd[key])) ** 2
             ld[d.id] = math.sqrt(wftd)
@@ -71,6 +75,7 @@ def index_corpus(corpus: DirectoryCorpus, index: str):
             for author in documents_author:
                 token = token_processor.process_token(author)
                 document_index.add_term(token, d.id, "author")
+    print("\nIndexing Done")
     docLenA = docLenA / len(list(corpus.documents()))
     disk_writer = DiskIndexWriter()
     directory_path = Path()
@@ -200,7 +205,9 @@ def normal_query_parser(first_word, query, corpus, disk_index):
 
 def default(disk_index, N, token_processor, terms):
     acc = collections.defaultdict(float)
+    print("Found terms", terms)
     for term in terms:
+        print("Processing 1", term)
         term = ''.join(token_processor.process_token_without_hyphen(term))
         postings = disk_index.get_postings_with_positions(term)
         Dft = len(postings[0])
@@ -209,12 +216,17 @@ def default(disk_index, N, token_processor, terms):
             tftd = len(postings[1][postings[0].index(doc)])
             wdt = 1 + log(tftd)
             acc[doc] += (Wqt * wdt)
+    print(len(acc.keys()), "length")
+    for doc in acc.keys():
+        Ld = disk_index.get_docAtt(doc, "default")
+        acc[doc] /= Ld
     return acc
 
 
 def traditional(disk_index, N, token_processor, terms):
     acc = collections.defaultdict(float)
     for term in terms:
+        print("Processing 2", term)
         term = ''.join(token_processor.process_token_without_hyphen(term))
         postings = disk_index.get_postings_with_positions(term)
         Dft = len(postings[0])
@@ -223,19 +235,28 @@ def traditional(disk_index, N, token_processor, terms):
             tftd = len(postings[1][postings[0].index(doc)])
             wdt = tftd
             acc[doc] += (Wqt * wdt)
+    for doc in acc.keys():
+        Ld = disk_index.get_docAtt(doc, "traditional")
+        acc[doc] /= Ld
     return acc
 
 
 def okapi(disk_index, N, token_processor, terms):
     acc = collections.defaultdict(float)
     doc_lenA = disk_index.get_docLen()
+    doc_lenD = {}
     for term in terms:
+        print("Processing 3", term)
         term = ''.join(token_processor.process_token_without_hyphen(term))
         postings = disk_index.get_postings_with_positions(term)
         Dft = len(postings[0])
         Wqt = max(0.1, log((N - Dft + 0.5) / (Dft + 0.5)))
         for doc in postings[0]:
-            doc_len = disk_index.get_docAtt(doc, "okapi")
+            if doc not in doc_lenD:
+                doc_len = disk_index.get_docAtt(doc, "okapi")
+                doc_lenD[doc] = doc_len
+            else:
+                doc_len = doc_lenD[doc]
             tftd = len(postings[1][postings[0].index(doc)])
             val2 = (1.2 * (0.25 + (0.75 * (doc_len / doc_lenA)))) + tftd
             wdt = (2.2 * tftd) / val2
@@ -248,6 +269,7 @@ def wacky(disk_index, N, token_processor, terms):
     byte_sizeD = {}
     ave_tftdD = {}
     for term in terms:
+        print("Processing 4", term)
         term = ''.join(token_processor.process_token_without_hyphen(term))
         postings = disk_index.get_postings_with_positions(term)
         Dft = len(postings[0])
@@ -263,6 +285,8 @@ def wacky(disk_index, N, token_processor, terms):
             val2 = 1 + (log(ave_tftd))
             wdt = (1 + log(tftd)) / val2
             acc[doc] += (Wqt * wdt)
+    for doc in acc.keys():
+        acc[doc] /= ave_tftdD[doc]
     return acc
 
 
@@ -274,18 +298,18 @@ def ranked_retrieval(corpus):
     soundex_vocab_disk_path = directory_path / 'index\\postings_soundex.bin'
     disk_index = DiskPositionalIndex(vocab_disk_path, ld_disk_path, biword_vocab_disk_path, soundex_vocab_disk_path)
     N = len(corpus.documents())
-    ranking_strategy = input("\n\t  Choose a ranking strategy \n1.Default \n2.Traditional \n3.Okapi BM25 \n4.Wacky\n ")
+    ranking_strategy = input("\nChoose a ranking strategy\n \n1.Default \n2.Traditional \n3.Okapi BM25 \n4.Wacky\n")
     query = input("\nEnter a query to search: ")
     terms = query.lower().split()
     token_processor = AdvancedTokenProcessor()
-    rank_functions = {'1': default(disk_index, N, token_processor, terms),
-                      '2': traditional(disk_index, N, token_processor, terms),
-                      '3': okapi(disk_index, N, token_processor, terms),
-                      '4': wacky(disk_index, N, token_processor, terms)}
-    if ranking_strategy in rank_functions:
-        acc = rank_functions[ranking_strategy]
+    if ranking_strategy == '2':
+        acc = traditional(disk_index, N, token_processor, terms)
+    elif ranking_strategy == '3':
+        acc = okapi(disk_index, N, token_processor, terms)
+    elif ranking_strategy == '4':
+        acc = wacky(disk_index, N, token_processor, terms)
     else:
-        acc = rank_functions['1']
+        acc = default(disk_index, N, token_processor, terms)
     heap = [(score, doc_id) for doc_id, score in acc.items()]
     nlargest = heapq.nlargest(10, heap)
     for score, doc_id in nlargest:

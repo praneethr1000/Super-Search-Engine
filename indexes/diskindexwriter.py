@@ -12,6 +12,7 @@ class DiskIndexWriter:
         self.db_create_soundex = False
 
     def writeIndex(self, index, path):
+        print("\nStarted writing vocab to disk")
         vocab = index.get_vocabulary()
         d = {}
         index_pos = 0
@@ -40,6 +41,7 @@ class DiskIndexWriter:
         self.write_to_db(d)
 
     def write_docAtt(self, path, ld, docLenD, byteSize, aveTftd):
+        print("\nStarted writing Doc Attribute to disk")
         with open(str(path), 'wb') as f:
             d = {}
             index_pos = 0
@@ -50,13 +52,14 @@ class DiskIndexWriter:
                 f.write(struct.pack('>i', byteSize[doc]))
                 f.write(struct.pack('>d', float(aveTftd[doc])))
                 index_pos += 24
-        self.write_docAtt_to_db(d, "documentWeight")
+        self.write_docAtt_to_db(d)
 
     def write_docLen(self, path, docLenA):
         with open(str(path), 'wb') as f:
             f.write(struct.pack('>d', float(docLenA)))
 
     def write_biword(self, index, path):
+        print("\nStarted writing biword to disk")
         vocab = index.get_biword_vocabulary()
         d = {}
         index_pos = 0
@@ -77,6 +80,7 @@ class DiskIndexWriter:
         self.write_biword_to_db(d)
 
     def write_soundex(self, index, path):
+        print("\nStarted writing soundex vocab to disk")
         vocab = index.get_mapped_vocabulary()
         mapped_terms = index.get_term_mapping()
         body_tag_terms = index.get_body_tag_terms()
@@ -110,23 +114,24 @@ class DiskIndexWriter:
         except Exception as e:
             print(e)
 
-    def write_docAtt_to_db(self, ld, table):
+    def write_docAtt_to_db(self, ld):
+        print("\nStarted writing Doc Att to dB Function (write_docAtt_to_db)")
         # SQL CONNECTION
         conn, cursor = self.create_db_connection()
         # To delete the table before inserting again
         try:
-            cursor.execute("drop table +"+table+";")
+            cursor.execute("drop table documentWeight;")
         except Exception as e:
             print(e)
         # To create a table
         try:
-            cursor.execute("create table +"+table+"(doc_id int, position int);")
+            cursor.execute("create table documentWeight(doc_id int, position int);")
         except Exception as e:
             print(e)
         # To insert positions
         for doc_id in ld:
             try:
-                cursor.execute("INSERT INTO +"+table+" VALUES(?,?)", (doc_id, ld[doc_id]))
+                cursor.execute("INSERT INTO documentWeight VALUES(?,?)", (doc_id, ld[doc_id]))
             except Exception as e:
                 print(e)
 
@@ -135,6 +140,7 @@ class DiskIndexWriter:
         conn.close()
 
     def write_biword_to_db(self, vocab):
+        print("\nStarted writing biword to dB Function (write_biword_to_db)")
         # SQL CONNECTION
         conn, cursor = self.create_db_connection()
         # To delete the table before inserting again
@@ -164,6 +170,7 @@ class DiskIndexWriter:
         conn.close()
 
     def write_to_db(self, vocab):
+        print("\nStarted writing vocab to dB Function (write_to_db)")
         # SQL CONNECTION
         conn, cursor = self.create_db_connection()
         # To delete the table before inserting again
@@ -193,6 +200,7 @@ class DiskIndexWriter:
         conn.close()
 
     def write_soundex_to_db(self, vocab):
+        print("\nStarted writing soundex to dB Function (write_soundex_to_db)")
         # SQL CONNECTION
         conn, cursor = self.create_db_connection()
         # To delete the table before inserting again
@@ -222,6 +230,7 @@ class DiskIndexWriter:
         conn.close()
 
     def write_mapping_to_db(self, vocab, body_tag_terms):
+        print("\nStarted writing mappings to dB Function (write_mapping_to_db)")
         # SQL CONNECTION
         conn, cursor = self.create_db_connection()
         # To delete the table before inserting again

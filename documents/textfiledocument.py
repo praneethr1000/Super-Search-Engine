@@ -31,6 +31,3 @@ class TextFileDocument(Document):
         """A factory method to create a TextFileDocument around the given file path."""
         return TextFileDocument(doc_id, abs_path)
 
-    @property
-    def fileName(self) -> str:
-        return self.path.stem

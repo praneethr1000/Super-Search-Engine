@@ -1,4 +1,3 @@
-from io import TextIOWrapper
 from pathlib import Path
 from typing import Iterable
 from .document import Document
@@ -19,10 +18,6 @@ class JsonFileDocument(Document):
         with open(self.path, encoding='utf-8') as f:
             data = json.load(f)
         return data['title']
-
-    @property
-    def fileName(self) -> str:
-        return self.path.stem
 
     @property
     def author(self) -> str:
