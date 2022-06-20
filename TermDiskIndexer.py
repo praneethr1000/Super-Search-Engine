@@ -205,39 +205,43 @@ def normal_query_parser(first_word, query, corpus, disk_index):
 
 def default(disk_index, N, token_processor, terms):
     acc = collections.defaultdict(float)
-    print("Found terms", terms)
+    processed_terms = []
     for term in terms:
+        processed_terms.append(''.join(token_processor.process_token_without_hyphen(term)))
+    postings_list = disk_index.get_postings_with_positions_list(processed_terms)
+    for term in processed_terms:
         print("Processing 1", term)
-        term = ''.join(token_processor.process_token_without_hyphen(term))
-        postings = disk_index.get_postings_with_positions(term)
+        postings = postings_list[term]
         Dft = len(postings[0])
         Wqt = log(1 + (N / Dft))
         for doc in postings[0]:
             tftd = len(postings[1][postings[0].index(doc)])
             wdt = 1 + log(tftd)
             acc[doc] += (Wqt * wdt)
-    print(len(acc.keys()), "length")
-    for doc in acc.keys():
-        Ld = disk_index.get_docAtt(doc, "default")
-        acc[doc] /= Ld
+    Ld = disk_index.get_docAtt_default(list(acc.keys()))
+    for index, doc in enumerate(acc.keys()):
+        acc[doc] /= Ld[doc]
     return acc
 
 
 def traditional(disk_index, N, token_processor, terms):
     acc = collections.defaultdict(float)
+    processed_terms = []
     for term in terms:
+        processed_terms.append(''.join(token_processor.process_token_without_hyphen(term)))
+    postings_list = disk_index.get_postings_with_positions_list(processed_terms)
+    for term in processed_terms:
         print("Processing 2", term)
-        term = ''.join(token_processor.process_token_without_hyphen(term))
-        postings = disk_index.get_postings_with_positions(term)
+        postings = postings_list[term]
         Dft = len(postings[0])
         Wqt = log(N / Dft)
         for doc in postings[0]:
             tftd = len(postings[1][postings[0].index(doc)])
             wdt = tftd
             acc[doc] += (Wqt * wdt)
-    for doc in acc.keys():
-        Ld = disk_index.get_docAtt(doc, "traditional")
-        acc[doc] /= Ld
+    Ld = disk_index.get_docAtt_default(list(acc.keys()))
+    for index, doc in enumerate(acc.keys()):
+        acc[doc] /= Ld[doc]
     return acc
 
 

@@ -36,16 +36,29 @@ class DiskPositionalIndex:
             try:
                 if table == "vocab":
                     position = cursor.execute('select position from vocabulary where term LIKE ?', term).fetchall()[0]
+                elif table == "vocab_list":
+                    if len(term) == 1:
+                        position = cursor.execute('select position, term from vocabulary where term LIKE ?', term[0]).fetchall()
+                    else:
+                        position = cursor.execute('select position, term from vocabulary where CONVERT(VARCHAR, term)  in {};'.format(
+                            tuple(term))).fetchall()
                 elif table == "biword_vocab":
-                    position = cursor.execute('select position from biword_vocabulary where term LIKE ?', term).fetchall()[0]
+                    position = \
+                    cursor.execute('select position from biword_vocabulary where term LIKE ?', term).fetchall()[0]
                 elif table == "soundex_body_terms":
                     position = cursor.execute('select term from soundex_mapping where body_tag = 1').fetchall()[0]
                 elif table == "soundex_mapped_term":
-                    position = cursor.execute('select mapping from soundex_mapping where term LIKE ?', term).fetchall()[0]
+                    position = cursor.execute('select mapping from soundex_mapping where term LIKE ?', term).fetchall()[
+                        0]
                 elif table == "soundex_vocab":
-                    position = cursor.execute('select position from soundex_vocabulary where term LIKE ?', term).fetchall()[0]
+                    position = \
+                    cursor.execute('select position from soundex_vocabulary where term LIKE ?', term).fetchall()[0]
+                elif table == "doc_weight_List":
+                    position = cursor.execute('select position, doc_id from documentWeight where doc_id in {};'.format(
+                        tuple(term))).fetchall()
                 else:
-                    position = cursor.execute('select position from documentWeight where doc_id = ?', term).fetchall()[0]
+                    position = cursor.execute('select position from documentWeight where doc_id = ?', term).fetchall()[
+                        0]
             except Exception as e:
                 print(e)
             # connection is not autocommit by default. So we must commit to save our changes.
@@ -72,13 +85,13 @@ class DiskPositionalIndex:
                     f.read(4)
         return postings
 
-    def get_postings_with_positions(self, term: str):
-        """Returns doc_id's for phrase literals with positions."""
-        position = self.get_position_from_db(term, "vocab")
-        postings = [[], []]
+    def get_postings_with_positions_list(self, terms: list[str]):
+        positions = self.get_position_from_db(terms, "vocab_list")
+        posting_list = {}
         with open(str(self.vocab_path), 'rb') as f:
-            for pos in position:
-                f.seek(pos)
+            for pos in positions:
+                postings = [[], []]
+                f.seek(pos[0])
                 doc_len = struct.unpack('>i', f.read(4))
                 prev_document = 0
                 for i in range(doc_len[0]):
@@ -93,34 +106,41 @@ class DiskPositionalIndex:
                         term_pos = struct.unpack('>i', f.read(4))
                         postings[1][-1].append(term_pos[0] + prev_position)
                         prev_position = term_pos[0] + prev_position
-        return postings
+                posting_list[pos[1]] = postings
+        return posting_list
 
     def get_docAtt(self, doc_id: int, rank_strategy):
         position = self.get_position_from_db(doc_id, "docWeights")
-        doc_weight, doc_len, byte_size, ave_tftd = 0, 0, 0, 0
+        doc_len, byte_size, ave_tftd = 0, 0, 0
         with open(str(self.ld_path), 'rb') as f:
             for pos in position:
-                f.seek(pos)
-                doc_weight = struct.unpack('>d', f.read(8))[0]
+                f.seek(pos+8)
                 doc_len = struct.unpack('>i', f.read(4))[0]
                 byte_size = struct.unpack('>i', f.read(4))[0]
                 ave_tftd = struct.unpack('>d', f.read(8))[0]
-        if rank_strategy == "default" or rank_strategy == "traditional":
-            return doc_weight
-        elif rank_strategy == "okapi":
+        if rank_strategy == "okapi":
             return doc_len
         else:
             return ave_tftd, byte_size
+
+    def get_docAtt_default(self, docs: list[int]):
+        positions = self.get_position_from_db(docs, "doc_weight_List")
+        doc_weight = {}
+        with open(str(self.ld_path), 'rb') as f:
+            for pos in positions:
+                f.seek(pos[0])
+                doc_weight[pos[1]] = (struct.unpack('>d', f.read(8))[0])
+        return doc_weight
 
     def get_docLen(self):
         with open(str(self.ld_path), 'rb') as f:
             doc_len = struct.unpack('>d', f.read(8))[0]
         return doc_len
 
-    def get_termInfo(self, term):
-        position = self.get_position_from_db(term, "vocab")
-        if position[0]:
-            return self.get_postings_with_positions(term)
+    def get_termInfo(self, terms):
+        positions = self.get_position_from_db(terms, "vocab_list")
+        if positions[0]:
+            return positions
         else:
             return [[], [[]]]
 
@@ -176,5 +196,3 @@ class DiskPositionalIndex:
                         postings.append(Posting(doc_id[0] + prev_document))
                         prev_document += doc_id[0]
         return postings
-
-
