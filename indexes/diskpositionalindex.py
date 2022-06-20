@@ -38,13 +38,15 @@ class DiskPositionalIndex:
                     position = cursor.execute('select position from vocabulary where term LIKE ?', term).fetchall()[0]
                 elif table == "vocab_list":
                     if len(term) == 1:
-                        position = cursor.execute('select position, term from vocabulary where term LIKE ?', term[0]).fetchall()
+                        position = cursor.execute('select position, term from vocabulary where term LIKE ?',
+                                                  term[0]).fetchall()
                     else:
-                        position = cursor.execute('select position, term from vocabulary where CONVERT(VARCHAR, term)  in {};'.format(
-                            tuple(term))).fetchall()
+                        position = cursor.execute(
+                            'select position, term from vocabulary where CONVERT(VARCHAR, term)  in {};'.format(
+                                tuple(term))).fetchall()
                 elif table == "biword_vocab":
                     position = \
-                    cursor.execute('select position from biword_vocabulary where term LIKE ?', term).fetchall()[0]
+                        cursor.execute('select position from biword_vocabulary where term LIKE ?', term).fetchall()[0]
                 elif table == "soundex_body_terms":
                     position = cursor.execute('select term from soundex_mapping where body_tag = 1').fetchall()[0]
                 elif table == "soundex_mapped_term":
@@ -52,10 +54,15 @@ class DiskPositionalIndex:
                         0]
                 elif table == "soundex_vocab":
                     position = \
-                    cursor.execute('select position from soundex_vocabulary where term LIKE ?', term).fetchall()[0]
+                        cursor.execute('select position from soundex_vocabulary where term LIKE ?', term).fetchall()[0]
                 elif table == "doc_weight_List":
-                    position = cursor.execute('select position, doc_id from documentWeight where doc_id in {};'.format(
-                        tuple(term))).fetchall()
+                    if len(term) == 1:
+                        position = \
+                            cursor.execute('select position from documentWeight where doc_id = ?', term[0]).fetchall()
+                    else:
+                        position = cursor.execute(
+                            'select position, doc_id from documentWeight where doc_id in {};'.format(
+                                tuple(term))).fetchall()
                 else:
                     position = cursor.execute('select position from documentWeight where doc_id = ?', term).fetchall()[
                         0]
@@ -109,19 +116,24 @@ class DiskPositionalIndex:
                 posting_list[pos[1]] = postings
         return posting_list
 
-    def get_docAtt(self, doc_id: int, rank_strategy):
-        position = self.get_position_from_db(doc_id, "docWeights")
-        doc_len, byte_size, ave_tftd = 0, 0, 0
+    def get_docAtt_okapi(self, docs: list[int]):
+        positions = self.get_position_from_db(docs, "doc_weight_List")
+        doc_Length = {}
         with open(str(self.ld_path), 'rb') as f:
-            for pos in position:
-                f.seek(pos+8)
-                doc_len = struct.unpack('>i', f.read(4))[0]
-                byte_size = struct.unpack('>i', f.read(4))[0]
-                ave_tftd = struct.unpack('>d', f.read(8))[0]
-        if rank_strategy == "okapi":
-            return doc_len
-        else:
-            return ave_tftd, byte_size
+            for pos in positions:
+                f.seek(pos[0] + 8)
+                doc_Length[pos[1]] = (struct.unpack('>i', f.read(4))[0])
+        return doc_Length
+
+    def get_docAtt_wacky(self, docs: list[int]):
+        byte_size, ave_tftd = {}, {}
+        positions = self.get_position_from_db(docs, "doc_weight_List")
+        with open(str(self.ld_path), 'rb') as f:
+            for pos in positions:
+                f.seek(pos[0] + 12)
+                byte_size[pos[1]] = (struct.unpack('>i', f.read(4))[0])
+                ave_tftd[pos[1]] = (struct.unpack('>d', f.read(8))[0])
+        return byte_size, ave_tftd
 
     def get_docAtt_default(self, docs: list[int]):
         positions = self.get_position_from_db(docs, "doc_weight_List")

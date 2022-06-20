@@ -203,20 +203,15 @@ def normal_query_parser(first_word, query, corpus, disk_index):
                 print("\nPlease enter integer value")
 
 
-def default(disk_index, N, token_processor, terms):
-    acc = collections.defaultdict(float)
-    processed_terms = []
+def default(disk_index, N, acc, postings_list, terms, strategy):
     for term in terms:
-        processed_terms.append(''.join(token_processor.process_token_without_hyphen(term)))
-    postings_list = disk_index.get_postings_with_positions_list(processed_terms)
-    for term in processed_terms:
-        print("Processing 1", term)
+        print("Processing ", term)
         postings = postings_list[term]
         Dft = len(postings[0])
-        Wqt = log(1 + (N / Dft))
+        Wqt = log(1 + (N / Dft)) if strategy == "default" else log(N / Dft)
         for doc in postings[0]:
             tftd = len(postings[1][postings[0].index(doc)])
-            wdt = 1 + log(tftd)
+            wdt = 1 + log(tftd) if strategy == "default" else tftd
             acc[doc] += (Wqt * wdt)
     Ld = disk_index.get_docAtt_default(list(acc.keys()))
     for index, doc in enumerate(acc.keys()):
@@ -224,69 +219,40 @@ def default(disk_index, N, token_processor, terms):
     return acc
 
 
-def traditional(disk_index, N, token_processor, terms):
-    acc = collections.defaultdict(float)
-    processed_terms = []
-    for term in terms:
-        processed_terms.append(''.join(token_processor.process_token_without_hyphen(term)))
-    postings_list = disk_index.get_postings_with_positions_list(processed_terms)
-    for term in processed_terms:
-        print("Processing 2", term)
-        postings = postings_list[term]
-        Dft = len(postings[0])
-        Wqt = log(N / Dft)
-        for doc in postings[0]:
-            tftd = len(postings[1][postings[0].index(doc)])
-            wdt = tftd
-            acc[doc] += (Wqt * wdt)
-    Ld = disk_index.get_docAtt_default(list(acc.keys()))
-    for index, doc in enumerate(acc.keys()):
-        acc[doc] /= Ld[doc]
-    return acc
-
-
-def okapi(disk_index, N, token_processor, terms):
-    acc = collections.defaultdict(float)
+def okapi(disk_index, N, acc, postings_list, terms):
     doc_lenA = disk_index.get_docLen()
-    doc_lenD = {}
+    docs = set()
     for term in terms:
-        print("Processing 3", term)
-        term = ''.join(token_processor.process_token_without_hyphen(term))
-        postings = disk_index.get_postings_with_positions(term)
+        postings = postings_list[term]
+        docs.update(postings[0])
+    doc_lenD = disk_index.get_docAtt_okapi(list(docs))
+    for term in terms:
+        print("Processing ", term)
+        postings = postings_list[term]
         Dft = len(postings[0])
         Wqt = max(0.1, log((N - Dft + 0.5) / (Dft + 0.5)))
         for doc in postings[0]:
-            if doc not in doc_lenD:
-                doc_len = disk_index.get_docAtt(doc, "okapi")
-                doc_lenD[doc] = doc_len
-            else:
-                doc_len = doc_lenD[doc]
             tftd = len(postings[1][postings[0].index(doc)])
-            val2 = (1.2 * (0.25 + (0.75 * (doc_len / doc_lenA)))) + tftd
+            val2 = (1.2 * (0.25 + (0.75 * (doc_lenD[doc] / doc_lenA)))) + tftd
             wdt = (2.2 * tftd) / val2
             acc[doc] += (Wqt * wdt)
     return acc
 
 
-def wacky(disk_index, N, token_processor, terms):
-    acc = collections.defaultdict(float)
-    byte_sizeD = {}
-    ave_tftdD = {}
+def wacky(disk_index, N, acc, postings_list, terms):
+    docs = set()
     for term in terms:
-        print("Processing 4", term)
-        term = ''.join(token_processor.process_token_without_hyphen(term))
-        postings = disk_index.get_postings_with_positions(term)
+        postings = postings_list[term]
+        docs.update(postings[0])
+    byte_sizeD, ave_tftdD = disk_index.get_docAtt_wacky(list(docs))
+    for term in terms:
+        print("Processing ", term)
+        postings = postings_list[term]
         Dft = len(postings[0])
         Wqt = max(0, log((N - Dft) / Dft))
         for doc in postings[0]:
-            if doc not in ave_tftdD:
-                ave_tftd, byte_size = disk_index.get_docAtt(doc, "wacky")
-                byte_sizeD[doc] = math.sqrt(byte_size)
-                ave_tftdD[doc] = ave_tftd
-            else:
-                ave_tftd = ave_tftdD[doc]
             tftd = len(postings[1][postings[0].index(doc)])
-            val2 = 1 + (log(ave_tftd))
+            val2 = 1 + (log(ave_tftdD[doc]))
             wdt = (1 + log(tftd)) / val2
             acc[doc] += (Wqt * wdt)
     for doc in acc.keys():
@@ -306,14 +272,19 @@ def ranked_retrieval(corpus):
     query = input("\nEnter a query to search: ")
     terms = query.lower().split()
     token_processor = AdvancedTokenProcessor()
+    acc = collections.defaultdict(float)
+    processed_terms = []
+    for term in terms:
+        processed_terms.append(''.join(token_processor.process_token_without_hyphen(term)))
+    postings_list = disk_index.get_postings_with_positions_list(processed_terms)
     if ranking_strategy == '2':
-        acc = traditional(disk_index, N, token_processor, terms)
+        acc = default(disk_index, N, acc, postings_list, processed_terms, "traditional")
     elif ranking_strategy == '3':
-        acc = okapi(disk_index, N, token_processor, terms)
+        acc = okapi(disk_index, N, acc, postings_list, processed_terms)
     elif ranking_strategy == '4':
-        acc = wacky(disk_index, N, token_processor, terms)
+        acc = wacky(disk_index, N, acc, postings_list, processed_terms)
     else:
-        acc = default(disk_index, N, token_processor, terms)
+        acc = default(disk_index, N, acc, postings_list, processed_terms, "default")
     heap = [(score, doc_id) for doc_id, score in acc.items()]
     nlargest = heapq.nlargest(10, heap)
     for score, doc_id in nlargest:
