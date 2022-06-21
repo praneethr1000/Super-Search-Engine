@@ -268,27 +268,35 @@ def ranked_retrieval(corpus):
     soundex_vocab_disk_path = directory_path / 'index\\postings_soundex.bin'
     disk_index = DiskPositionalIndex(vocab_disk_path, ld_disk_path, biword_vocab_disk_path, soundex_vocab_disk_path)
     N = len(corpus.documents())
-    ranking_strategy = input("\nChoose a ranking strategy\n \n1.Default \n2.Traditional \n3.Okapi BM25 \n4.Wacky\n")
-    query = input("\nEnter a query to search: ")
-    terms = query.lower().split()
-    token_processor = AdvancedTokenProcessor()
-    acc = collections.defaultdict(float)
-    processed_terms = []
-    for term in terms:
-        processed_terms.append(''.join(token_processor.process_token_without_hyphen(term)))
-    postings_list = disk_index.get_postings_with_positions_list(processed_terms)
-    if ranking_strategy == '2':
-        acc = default(disk_index, N, acc, postings_list, processed_terms, "traditional")
-    elif ranking_strategy == '3':
-        acc = okapi(disk_index, N, acc, postings_list, processed_terms)
-    elif ranking_strategy == '4':
-        acc = wacky(disk_index, N, acc, postings_list, processed_terms)
-    else:
-        acc = default(disk_index, N, acc, postings_list, processed_terms, "default")
-    heap = [(score, doc_id) for doc_id, score in acc.items()]
-    nlargest = heapq.nlargest(10, heap)
-    for score, doc_id in nlargest:
-        print(f"{str(doc_id) + '. ' + corpus.get_document(int(doc_id)).title + ' --- Acc: ' + str(score)}")
+    while True:
+        ranking_strategy = input("\nChoose a ranking strategy\n \n1.Default \n2.Traditional \n3.Okapi BM25 \n4.Wacky\n5.Quit\n")
+        if ranking_strategy == '5':
+            print("Thank you!")
+            break
+        query = input("\nEnter a query to search: ")
+        terms = query.lower().split()
+        # To handle exit
+        if ranking_strategy == '5':
+            print("Thank you!")
+            break
+        token_processor = AdvancedTokenProcessor()
+        acc = collections.defaultdict(float)
+        processed_terms = []
+        for term in terms:
+            processed_terms.append(''.join(token_processor.process_token_without_hyphen(term)))
+        postings_list = disk_index.get_postings_with_positions_list(processed_terms)
+        if ranking_strategy == '2':
+            acc = default(disk_index, N, acc, postings_list, processed_terms, "traditional")
+        elif ranking_strategy == '3':
+            acc = okapi(disk_index, N, acc, postings_list, processed_terms)
+        elif ranking_strategy == '4':
+            acc = wacky(disk_index, N, acc, postings_list, processed_terms)
+        else:
+            acc = default(disk_index, N, acc, postings_list, processed_terms, "default")
+        heap = [(score, doc_id) for doc_id, score in acc.items()]
+        nlargest = heapq.nlargest(10, heap)
+        for score, doc_id in nlargest:
+            print(f"{str(doc_id) + '. ' + corpus.get_document(int(doc_id)).title + ' --- Acc: ' + str(score)}")
 
 
 def display_options():
