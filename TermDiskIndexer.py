@@ -256,7 +256,7 @@ def wacky(disk_index, N, acc, postings_list, terms):
             wdt = (1 + log(tftd)) / val2
             acc[doc] += (Wqt * wdt)
     for doc in acc.keys():
-        acc[doc] /= ave_tftdD[doc]
+        acc[doc] /= byte_sizeD[doc]
     return acc
 
 
