@@ -7,8 +7,10 @@ class NearLiteral(QueryComponent):
     Represents a phrase literal consisting of one or more terms that must occur in sequence.
     """
 
-    def __init__(self, terms: list[str]):
+    def __init__(self, terms: list[str], is_negative):
+        super().__init__(is_negative)
         self.terms = [s for s in terms]
+        self.is_negative = is_negative
 
     def check_k_positions(self, result, k):
         # Check if the terms are k indexes near

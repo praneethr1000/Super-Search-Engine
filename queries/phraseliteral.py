@@ -7,7 +7,8 @@ class PhraseLiteral(QueryComponent):
     Represents a phrase literal consisting of one or more terms that must occur in sequence.
     """
 
-    def __init__(self, terms: list[str]):
+    def __init__(self, terms: list[str], is_negative):
+        super().__init__(is_negative)
         self.terms = [s for s in terms]
 
     def positional_merge(self, result):

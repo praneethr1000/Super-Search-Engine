@@ -1,4 +1,4 @@
-from . import AndQuery, OrQuery, QueryComponent, TermLiteral, PhraseLiteral, NearLiteral
+from . import AndQuery, OrQuery, QueryComponent, TermLiteral, PhraseLiteral, NearLiteral, NotQuery
 
 
 class BooleanQueryParser:
@@ -56,7 +56,7 @@ class BooleanQueryParser:
         Locates and returns the next literal from the given subquery string.
         """
         sub_length = len(subquery)
-
+        is_negative_component = False
         # Skip past white space.
         while subquery[start_index] == ' ':
             start_index += 1
@@ -67,9 +67,21 @@ class BooleanQueryParser:
             next_quote = subquery.find('"', start_index)
             length_out = next_quote - start_index
             return BooleanQueryParser._Literal(
-                BooleanQueryParser._StringBounds(start_index, length_out+1),
-                PhraseLiteral(subquery[start_index:start_index + length_out].split())
+                BooleanQueryParser._StringBounds(start_index, length_out + 1),
+                PhraseLiteral(subquery[start_index:start_index + length_out].split(), is_negative_component)
             )
+
+        elif subquery[start_index] == "-":
+            is_negative_component = True
+
+            # Use recursion to extract the next literal following the - and wrap it inside a NotQuery component
+            not_query_literal = BooleanQueryParser._find_next_literal(subquery, start_index + 1)
+            not_query_literal_length = not_query_literal.bounds.length
+            # set that it is a negative component
+
+            return BooleanQueryParser._Literal(
+                BooleanQueryParser._StringBounds(start_index + 1, not_query_literal_length),
+                NotQuery(not_query_literal.literal_component, is_negative_component))
 
         # Checks if it's a near literal based on the staring [ brackets
         elif subquery[start_index] == '[':
@@ -79,7 +91,7 @@ class BooleanQueryParser:
             length_out = next_bracket - start_index
             return BooleanQueryParser._Literal(
                 BooleanQueryParser._StringBounds(start_index, length_out + 1),
-                NearLiteral(query.split(" "))
+                NearLiteral(query.split(" "), is_negative_component)
             )
         else:
             # Locate the next space to find the end of this literal.
@@ -93,7 +105,7 @@ class BooleanQueryParser:
             # This is a term literal containing a single term.
             return BooleanQueryParser._Literal(
                 BooleanQueryParser._StringBounds(start_index, length_out),
-                TermLiteral(subquery[start_index:start_index + length_out])
+                TermLiteral(subquery[start_index:start_index + length_out], is_negative_component)
             )
 
     # Instead of assuming that we only have single-term literals, modify this method so it will create a PhraseLiteral
