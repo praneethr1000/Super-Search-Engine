@@ -1,6 +1,7 @@
 from pathlib import Path
 from documents import DirectoryCorpus
 from indexes import PositionalInvertedIndex, SoundexIndex
+from indexes.diskindexwriter import DiskIndexWriter
 from queries import BooleanQueryParser
 from text import AdvancedTokenProcessor, EnglishTokenStream, BasicTokenProcessor
 import time

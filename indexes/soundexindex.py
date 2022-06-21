@@ -1,5 +1,4 @@
-from typing import Iterable
-from . import Posting, Index
+from . import Index
 
 
 class SoundexIndex(Index):
@@ -69,18 +68,17 @@ class SoundexIndex(Index):
             if self.code_mapping[self.document_mapping[term]][-1] != doc_id:
                 self.code_mapping[self.document_mapping[term]].append(doc_id)
 
-    def get_postings(self, term: str) -> Iterable[Posting]:
-        """Returns a list of Postings for all documents that contain the given term."""
-        tags = term.split()
-        postings = []
-        if tags[-1] != 'author' and tags[0] not in self.body_tag_terms:
-            # If it's a term from body and it's not present in body tag but present in author names
-            return postings
-        if tags[0] in self.document_mapping:
-            for doc in self.code_mapping[self.document_mapping[tags[0]]]:
-                postings.append(Posting(doc))
-        return postings
-
     def get_vocabulary(self) -> list[str]:
         vocabulary = list(sorted(self.document_mapping.keys()))
         return vocabulary
+
+    def get_mapped_vocabulary(self):
+        mapped_vocabulary = dict(sorted(self.code_mapping.items()))
+        return mapped_vocabulary
+
+    def get_term_mapping(self):
+        mapped_terms = dict(sorted(self.document_mapping.items()))
+        return mapped_terms
+
+    def get_body_tag_terms(self):
+        return self.body_tag_terms

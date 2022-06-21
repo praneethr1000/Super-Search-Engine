@@ -1,4 +1,3 @@
-from io import TextIOWrapper
 from pathlib import Path
 from typing import Iterable
 from .document import Document

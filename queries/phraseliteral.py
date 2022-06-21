@@ -7,7 +7,8 @@ class PhraseLiteral(QueryComponent):
     Represents a phrase literal consisting of one or more terms that must occur in sequence.
     """
 
-    def __init__(self, terms: list[str]):
+    def __init__(self, terms: list[str], is_negative):
+        super().__init__(is_negative)
         self.terms = [s for s in terms]
 
     def positional_merge(self, result):
@@ -65,9 +66,12 @@ class PhraseLiteral(QueryComponent):
             return postings
         else:
             # Returns postings based on positional inverted indexing
+            processed_terms = []
             for term in self.terms:
-                term = ''.join(token_processor.process_token_without_hyphen(term))
-                result.append(index.get_termInfo(term))
+                processed_terms.append(''.join(token_processor.process_token_without_hyphen(term)))
+            postings_list = index.get_postings_with_positions_list(processed_terms)
+            for term in processed_terms:
+                result.append(postings_list[term])
             documents = self.positional_merge(result)
             postings = []
             if documents:
