@@ -2,7 +2,6 @@ import collections
 import heapq
 import math
 import os
-import time
 from pathlib import Path
 from documents import DirectoryCorpus
 from indexes import PositionalInvertedIndex
@@ -38,7 +37,7 @@ def index_corpus(corpus: DirectoryCorpus):
             for token in term1:
                 if token == "":
                     continue
-                elif token in tftd:
+                if token in tftd:
                     tftd[token] += 1
                 else:
                     tftd[token] = 1
@@ -54,7 +53,7 @@ def index_corpus(corpus: DirectoryCorpus):
         wftd = 0
         len_tokens = len(tftd.keys())
         if len_tokens:
-            aveTftd[d.id] = sum(tftd.values()) / len_tokens
+            aveTftd[d.id] = sum(tftd.values()) / len(tftd.keys())
         else:
             aveTftd[d.id] = 0
         for key in tftd:
@@ -90,9 +89,8 @@ def start_program():
 
 
 def default(disk_index, N, acc, postings_list, terms, strategy):
+    print(terms)
     for term in terms:
-        if term not in postings_list:
-            continue
         postings = postings_list[term]
         Dft = len(postings[0])
         Wqt = log(1 + (N / Dft)) if strategy == "default" else log(N / Dft)
@@ -110,14 +108,10 @@ def okapi(disk_index, N, acc, postings_list, terms):
     doc_lenA = disk_index.get_docLen()
     docs = set()
     for term in terms:
-        if term not in postings_list:
-            continue
         postings = postings_list[term]
         docs.update(postings[0])
     doc_lenD = disk_index.get_docAtt_okapi(list(docs))
     for term in terms:
-        if term not in postings_list:
-            continue
         postings = postings_list[term]
         Dft = len(postings[0])
         Wqt = max(0.1, log((N - Dft + 0.5) / (Dft + 0.5)))
@@ -132,14 +126,10 @@ def okapi(disk_index, N, acc, postings_list, terms):
 def wacky(disk_index, N, acc, postings_list, terms):
     docs = set()
     for term in terms:
-        if term not in postings_list:
-            continue
         postings = postings_list[term]
         docs.update(postings[0])
     byte_sizeD, ave_tftdD = disk_index.get_docAtt_wacky(list(docs))
     for term in terms:
-        if term not in postings_list:
-            continue
         postings = postings_list[term]
         Dft = len(postings[0])
         Wqt = max(0, log((N - Dft) / Dft))
@@ -160,19 +150,22 @@ def compare_with_relavant(nlargest, corpus):
         lines = f.readlines()
         lines = [line.rstrip() for line in lines]
     rel_ids = lines[0].split(" ")
+    print(rel_ids)
+    # print(rel_ids)
     ind = 0
-    precision = []
+    precision = 0
     c = 0
     for score, doc_id in nlargest:
         ind += 1
         if str(doc_id + 1) in rel_ids:
             c += 1
-            precision.append(c / ind)
+            precision += (c / ind)
+            print(c, ind, "value")
             file_name = str(corpus.get_document(int(doc_id)).path).split("\\")[1]
             print("Relevant: " + file_name + " at index " + str(ind))
-    avg_pre = sum(precision) / len(rel_ids)
+    print(len(rel_ids), "real_ids")
+    avg_pre = precision / len(rel_ids)
     print("Average precision for this query: ", avg_pre)
-    return avg_pre
 
 
 def ranked_retrieval(corpus):
@@ -189,42 +182,30 @@ def ranked_retrieval(corpus):
         if ranking_strategy == '5':
             print("Thank you!")
             break
-        rel_docs_path = directory_path / 'relevance_cranfield\\relevance\\queries'
-        with open(str(rel_docs_path), 'r') as f:
-            lines = f.readlines()
-            lines = [line.rstrip() for line in lines]
-        avg_pre_list = []
-        starttime = time.time()
-        query_length = len(lines)
-        for query in range(query_length):
-            # query = input("\nEnter a query to search: ")
-            terms = lines[query].lower().split()
-            token_processor = AdvancedTokenProcessor()
-            acc = collections.defaultdict(float)
-            processed_terms = []
-            for term in terms:
-                for token in token_processor.process_token(term):
-                    if token == "":
-                        continue
-                    processed_terms.append(token)
-            postings_list = disk_index.get_postings_with_positions_list(processed_terms)
-            if ranking_strategy == '2':
-                acc = default(disk_index, N, acc, postings_list, processed_terms, "traditional")
-            elif ranking_strategy == '3':
-                acc = okapi(disk_index, N, acc, postings_list, processed_terms)
-            elif ranking_strategy == '4':
-                acc = wacky(disk_index, N, acc, postings_list, processed_terms)
-            else:
-                acc = default(disk_index, N, acc, postings_list, processed_terms, "default")
-            heap = [(score, doc_id) for doc_id, score in acc.items()]
-            nlargest = heapq.nlargest(50, heap)
-            precison = compare_with_relavant(nlargest, corpus)
-            avg_pre_list.append(precison)
-        endtime = time.time()
-        total_time = round(endtime - starttime)
-        print("\nMean average precision :", sum(avg_pre_list) / query_length)
-        print('Mean response time: ', total_time / query_length, 'seconds')
-        print("Throughput of the system: ", query_length / total_time)
+        query = input("\nEnter a query to search: ")
+        terms = query.lower().split()
+        # To handle exit
+        token_processor = AdvancedTokenProcessor()
+        acc = collections.defaultdict(float)
+        processed_terms = []
+        for term in terms:
+            for token in token_processor.process_token(term):
+                if token == "":
+                    continue
+                processed_terms.append(token)
+        postings_list = disk_index.get_postings_with_positions_list(processed_terms)
+        if ranking_strategy == '2':
+            acc = default(disk_index, N, acc, postings_list, processed_terms, "traditional")
+        elif ranking_strategy == '3':
+            acc = okapi(disk_index, N, acc, postings_list, processed_terms)
+        elif ranking_strategy == '4':
+            acc = wacky(disk_index, N, acc, postings_list, processed_terms)
+        else:
+            acc = default(disk_index, N, acc, postings_list, processed_terms, "default")
+        heap = [(score, doc_id) for doc_id, score in acc.items()]
+        nlargest = heapq.nlargest(50, heap)
+        compare_with_relavant(nlargest, corpus)
+
         # for score, doc_id in nlargest:
         #     print(f"{str(doc_id) + '. ' + str(corpus.get_document(int(doc_id)).path) + ' --- Acc: ' + str(score)}")
 

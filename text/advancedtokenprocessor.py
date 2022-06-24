@@ -29,10 +29,8 @@ class AdvancedTokenProcessor(TokenProcessor):
         # Process token with hyphen split
         term = self.token_formater(token)
         tokens = term.split("-")
-        if len(tokens) > 1:
-            tokens.append(''.join(tokens))
-            tokens.append(term)
-        return self.stem_tokens(tokens)
+        output = self.stem_tokens(tokens)
+        return output
 
     def process_token_without_hyphen(self, token: str) -> list[str]:
         # Process token without hyphen split
