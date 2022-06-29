@@ -76,7 +76,7 @@ def index_corpus(corpus: DirectoryCorpus, index: str):
                 token = token_processor.process_token(author)
                 document_index.add_term(token, d.id, "author")
     print("\nIndexing Done")
-    docLenA = docLenA / len(list(corpus.documents()))
+    docLenA = docLenA / len(corpus)
     disk_writer = DiskIndexWriter()
     directory_path = Path()
     disk_path = directory_path / 'index\\docWeights.bin'
