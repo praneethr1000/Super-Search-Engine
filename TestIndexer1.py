@@ -2,6 +2,7 @@ import collections
 import heapq
 import math
 import os
+import time
 from pathlib import Path
 from documents import DirectoryCorpus
 from indexes import PositionalInvertedIndex
@@ -141,21 +142,40 @@ def wacky(disk_index, N, acc, postings_list, terms):
     return acc
 
 
-def compare_with_relavant(nlargest, corpus, query_ranks):
+def compare_with_relavant(nlargest, corpus, query_ranks, display_output):
     rel_ids = query_ranks.split(" ")
-    print(rel_ids)
+    print(rel_ids, "Rel_ids")
+    print(len(rel_ids), "Length")
     ind = 0
     precision = []
     c = 0
+    pk = []
+    rk = []
     for score, doc_id in nlargest:
-        file_name = str(corpus.get_document(int(doc_id)).path).split("\\")[1]
         ind += 1
         if str(doc_id + 1) in rel_ids:
             c += 1
             precision.append(c / ind)
-            print("Relevant: " + file_name + " at index " + str(ind))
+            out = precision[-1]
+            if display_output:
+                file_name = str(corpus.get_document(int(doc_id)).path).split("\\")[1]
+                print("Relevant: " + file_name + " at index " + str(ind))
+
+        else:
+            out = c / ind
+        rec = c / len(rel_ids)
+        pk.append(out)
+        rk.append(rec)
+        # print("P@"+str(ind)+" : ", out)
+        # print("R@" + str(ind) + " : ", rec)
     avg_pre = sum(precision) / len(rel_ids)
-    print("Average precision for this query: ", avg_pre)
+    if display_output:
+        print("\nAverage precision for this query: ", avg_pre)
+    for i in pk:
+        print(i)
+    print("\n")
+    for i in rk:
+        print(i)
     return avg_pre
 
 
@@ -180,35 +200,73 @@ def ranked_retrieval(corpus):
     disk_index = DiskPositionalIndex(vocab_disk_path, ld_disk_path, biword_vocab_disk_path, soundex_vocab_disk_path)
     N = len(corpus.documents())
     ranks, lines = query_ranks(directory_path)
+    query_length = len(lines)
+
     while True:
         ranking_strategy = input(
             "\nChoose a ranking strategy\n \n1.Default \n2.Traditional \n3.Okapi BM25 \n4.Wacky\n5.Quit\n")
         if ranking_strategy == '5':
             print("Thank you!")
             break
-
-        query = input("\nEnter a query to search: ")
-        terms = query.lower().split()
-        token_processor = AdvancedTokenProcessor()
-        acc = collections.defaultdict(float)
-        processed_terms = []
-        for term in terms:
-            for token in token_processor.process_token(term):
-                if token == "":
-                    continue
-                processed_terms.append(token)
-        postings_list = disk_index.get_postings_with_positions_list(processed_terms)
-        if ranking_strategy == '2':
-            acc = default(disk_index, N, acc, postings_list, processed_terms, "traditional")
-        elif ranking_strategy == '3':
-            acc = okapi(disk_index, N, acc, postings_list, processed_terms)
-        elif ranking_strategy == '4':
-            acc = wacky(disk_index, N, acc, postings_list, processed_terms)
+        avg_pre_list = []
+        throughtput_list = []
+        iterations = int(input("Enter the number of iterations you want to perform: "))
+        entire_set = input("Enter 1 if you want to process one query or any other key to process entire set: ")
+        if entire_set != '1':
+            query_length = query_length
         else:
-            acc = default(disk_index, N, acc, postings_list, processed_terms, "default")
-        heap = [(score, doc_id) for doc_id, score in acc.items()]
-        nlargest = heapq.nlargest(50, heap)
-        compare_with_relavant(nlargest, corpus, ranks[lines.index(query)])
+            query_length = 1
+
+        user_query = ''
+        if query_length == 1:
+            user_query = input("\nEnter a query to search: ")
+        for _ in range(iterations):  # Number of iterations
+            for line in range(query_length):  # Number of queries
+                starttime = time.time()
+                if query_length == 1:
+                    query = user_query
+                else:
+                    query = lines[line]
+                terms = query.lower().split()
+                token_processor = AdvancedTokenProcessor()
+                acc = collections.defaultdict(float)
+                processed_terms = []
+                for term in terms:
+                    for token in token_processor.process_token(term):
+                        if token == "":
+                            continue
+                        processed_terms.append(token)
+                postings_list = disk_index.get_postings_with_positions_list(processed_terms)
+                if ranking_strategy == '2':
+                    acc = default(disk_index, N, acc, postings_list, processed_terms, "traditional")
+                elif ranking_strategy == '3':
+                    acc = okapi(disk_index, N, acc, postings_list, processed_terms)
+                elif ranking_strategy == '4':
+                    acc = wacky(disk_index, N, acc, postings_list, processed_terms)
+                else:
+                    acc = default(disk_index, N, acc, postings_list, processed_terms, "default")
+                endtime = time.time()
+                total_time = endtime - starttime
+                throughput = 1 / total_time
+                throughtput_list.append(throughput)
+                heap = [(score, doc_id) for doc_id, score in acc.items()]
+                nlargest = heapq.nlargest(20, heap)
+                if iterations == 1 and query_length == 1:
+                    precison = compare_with_relavant(nlargest, corpus, ranks[lines.index(query)], True)
+                elif query_length == 1:
+                    precison = compare_with_relavant(nlargest, corpus, ranks[lines.index(query)], False)
+                else:
+                    precison = compare_with_relavant(nlargest, corpus, ranks[line], False)
+                avg_pre_list.append(precison)
+        avg_throughput = sum(throughtput_list) / (query_length * iterations)
+        mean_response_time = 1 / avg_throughput
+        if query_length != 1 or iterations != 1:
+            print("Mean average precision :", sum(avg_pre_list) / (query_length * iterations))
+            print("Mean response time: ", mean_response_time)
+            print(
+                "Average throughput for " + str(iterations) + " iterations with " + str(query_length) + " queries is: ",
+                avg_throughput)
+            print()
 
 
 if __name__ == "__main__":
