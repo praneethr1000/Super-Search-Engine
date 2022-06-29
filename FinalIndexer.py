@@ -205,7 +205,14 @@ def ranked_retrieval(corpus):
 
         user_query = ''
         if query_length == 1:
-            user_query = input("\nEnter a query to search: ")
+            while True:
+                user_query = input("\nEnter a query to search: ")
+                if user_query not in lines:
+                    print("Please enter correct query that is present in the file")
+                    continue
+                else:
+                    break
+
         for _ in range(iterations):  # Number of iterations
             for line in range(query_length):  # Number of queries
                 starttime = time.time()
