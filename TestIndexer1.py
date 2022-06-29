@@ -27,33 +27,24 @@ def index_corpus(corpus: DirectoryCorpus):
         for term in document_content:
             terms.append(token_processor.process_token(term))
         len_document = len(terms)
-        docLenD[d.id] = len_document
-        docLenA += len_document
         tftd = {}
-        for i in range(len_document - 1):
+        docLenD[d.id] = 0
+        for i in range(len_document):
             term1 = terms[i]
-            term2 = ''.join(terms[i + 1])
-            document_index.add_term_biword(''.join(term1) + " " + term2, d.id)
             for token in term1:
-                if token == "":
+                if token == "" or token == " ":
                     continue
-                if token in tftd:
+                elif token in tftd:
                     tftd[token] += 1
                 else:
                     tftd[token] = 1
+                docLenD[d.id] += 1
+                docLenA += 1
                 document_index.add_term(token, d.id, i + 1)
-        if len_document >= 1:
-            final_term = terms[-1]
-            for token in final_term:
-                if token in tftd:
-                    tftd[token] += 1
-                else:
-                    tftd[token] = 1
-                document_index.add_term(token, d.id, len_document)
         wftd = 0
         len_tokens = len(tftd.keys())
         if len_tokens:
-            aveTftd[d.id] = sum(tftd.values()) / len(tftd.keys())
+            aveTftd[d.id] = sum(tftd.values()) / len_tokens
         else:
             aveTftd[d.id] = 0
         for key in tftd:
@@ -74,8 +65,6 @@ def write_to_disk(index, disk_writer):
     directory_path = Path()
     disk_path = directory_path / 'index\\postings.bin'
     disk_writer.writeIndex(index, disk_path)
-    disk_path = directory_path / 'index\\postings_biword.bin'
-    disk_writer.write_biword(index, disk_path)
 
 
 def start_program():
@@ -89,8 +78,9 @@ def start_program():
 
 
 def default(disk_index, N, acc, postings_list, terms, strategy):
-    print(terms)
     for term in terms:
+        if term not in postings_list:
+            continue
         postings = postings_list[term]
         Dft = len(postings[0])
         Wqt = log(1 + (N / Dft)) if strategy == "default" else log(N / Dft)
@@ -108,10 +98,14 @@ def okapi(disk_index, N, acc, postings_list, terms):
     doc_lenA = disk_index.get_docLen()
     docs = set()
     for term in terms:
+        if term not in postings_list:
+            continue
         postings = postings_list[term]
         docs.update(postings[0])
     doc_lenD = disk_index.get_docAtt_okapi(list(docs))
     for term in terms:
+        if term not in postings_list:
+            continue
         postings = postings_list[term]
         Dft = len(postings[0])
         Wqt = max(0.1, log((N - Dft + 0.5) / (Dft + 0.5)))
@@ -126,10 +120,14 @@ def okapi(disk_index, N, acc, postings_list, terms):
 def wacky(disk_index, N, acc, postings_list, terms):
     docs = set()
     for term in terms:
+        if term not in postings_list:
+            continue
         postings = postings_list[term]
         docs.update(postings[0])
     byte_sizeD, ave_tftdD = disk_index.get_docAtt_wacky(list(docs))
     for term in terms:
+        if term not in postings_list:
+            continue
         postings = postings_list[term]
         Dft = len(postings[0])
         Wqt = max(0, log((N - Dft) / Dft))
@@ -143,29 +141,34 @@ def wacky(disk_index, N, acc, postings_list, terms):
     return acc
 
 
-def compare_with_relavant(nlargest, corpus):
-    directory_path = Path()
-    rel_docs_path = directory_path / 'relevance_cranfield\\relevance\\qrel'
-    with open(str(rel_docs_path), 'r') as f:
-        lines = f.readlines()
-        lines = [line.rstrip() for line in lines]
-    rel_ids = lines[0].split(" ")
+def compare_with_relavant(nlargest, corpus, query_ranks):
+    rel_ids = query_ranks.split(" ")
     print(rel_ids)
-    # print(rel_ids)
     ind = 0
-    precision = 0
+    precision = []
     c = 0
     for score, doc_id in nlargest:
+        file_name = str(corpus.get_document(int(doc_id)).path).split("\\")[1]
         ind += 1
         if str(doc_id + 1) in rel_ids:
             c += 1
-            precision += (c / ind)
-            print(c, ind, "value")
-            file_name = str(corpus.get_document(int(doc_id)).path).split("\\")[1]
+            precision.append(c / ind)
             print("Relevant: " + file_name + " at index " + str(ind))
-    print(len(rel_ids), "real_ids")
-    avg_pre = precision / len(rel_ids)
+    avg_pre = sum(precision) / len(rel_ids)
     print("Average precision for this query: ", avg_pre)
+    return avg_pre
+
+
+def query_ranks(directory_path):
+    rel_docs_path = directory_path / 'relevance_cranfield\\relevance\\qrel'
+    with open(str(rel_docs_path), 'r') as f:
+        lines = f.readlines()
+        ranks = [line.rstrip() for line in lines]
+    rel_docs_path = directory_path / 'relevance_cranfield\\relevance\\queries'
+    with open(str(rel_docs_path), 'r') as f:
+        lines = f.readlines()
+        queries = [line.rstrip() for line in lines]
+    return ranks, queries
 
 
 def ranked_retrieval(corpus):
@@ -176,15 +179,16 @@ def ranked_retrieval(corpus):
     soundex_vocab_disk_path = directory_path / 'index\\postings_soundex.bin'
     disk_index = DiskPositionalIndex(vocab_disk_path, ld_disk_path, biword_vocab_disk_path, soundex_vocab_disk_path)
     N = len(corpus.documents())
+    ranks, lines = query_ranks(directory_path)
     while True:
         ranking_strategy = input(
             "\nChoose a ranking strategy\n \n1.Default \n2.Traditional \n3.Okapi BM25 \n4.Wacky\n5.Quit\n")
         if ranking_strategy == '5':
             print("Thank you!")
             break
+
         query = input("\nEnter a query to search: ")
         terms = query.lower().split()
-        # To handle exit
         token_processor = AdvancedTokenProcessor()
         acc = collections.defaultdict(float)
         processed_terms = []
@@ -204,10 +208,7 @@ def ranked_retrieval(corpus):
             acc = default(disk_index, N, acc, postings_list, processed_terms, "default")
         heap = [(score, doc_id) for doc_id, score in acc.items()]
         nlargest = heapq.nlargest(50, heap)
-        compare_with_relavant(nlargest, corpus)
-
-        # for score, doc_id in nlargest:
-        #     print(f"{str(doc_id) + '. ' + str(corpus.get_document(int(doc_id)).path) + ' --- Acc: ' + str(score)}")
+        compare_with_relavant(nlargest, corpus, ranks[lines.index(query)])
 
 
 if __name__ == "__main__":
