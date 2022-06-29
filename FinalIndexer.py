@@ -186,7 +186,7 @@ def ranked_retrieval(corpus):
     disk_index = DiskPositionalIndex(vocab_disk_path, ld_disk_path, biword_vocab_disk_path, soundex_vocab_disk_path)
     N = len(corpus.documents())
     ranks, lines = query_ranks(directory_path)
-    query_length = len(lines)
+    query_length_initial = len(lines)
 
     while True:
         ranking_strategy = input(
@@ -199,7 +199,7 @@ def ranked_retrieval(corpus):
         iterations = int(input("Enter the number of iterations you want to perform: "))
         entire_set = input("Enter 1 if you want to process one query or any other key to process entire set: ")
         if entire_set != '1':
-            query_length = query_length
+            query_length = query_length_initial
         else:
             query_length = 1
 
